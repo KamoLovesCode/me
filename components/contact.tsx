@@ -19,12 +19,14 @@ export default function Contact() {
     if (document.getElementById('livechat-script')) return
     const script = document.createElement('script')
     script.id = 'livechat-script'
+    script.type = 'text/javascript'
     script.async = true
-    // Replace LICENSE_ID with your actual LiveChat license ID
     script.innerHTML = `
       window.__lc = window.__lc || {};
-      window.__lc.license = 12345678; // TODO: Replace with your LiveChat license ID
-      (function(n,t,c){function i(n){return e._h?e._h.apply(null,n):e._q.push(n)}var e={_q:[],_h:null,_v:"2.0",on:function(){i(["on", [].slice.call(arguments)])},once:function(){i(["once",[].slice.call(arguments)])},off:function(){i(["off",[].slice.call(arguments)])},get:function(){if(!e._h)throw new Error("LiveChatWidget: the widget is not initialized yet");return i(["get",[].slice.call(arguments)])},call:function(){i(["call",[].slice.call(arguments)])},init:function(){var n=t.createElement("script");n.async=!0,n.type="text/javascript",n.src="https://cdn.livechatinc.com/tracking.js",t.head.appendChild(n)} };!n.__lc.asyncInit&&e.init(),n.LiveChatWidget=n.LiveChatWidget||e })(window,document,[]);
+      window.__lc.license = 19244245;
+      window.__lc.integration_name = "manual_channels";
+      window.__lc.product_name = "livechat";
+      ;(function(n,t,c){function i(n){return e._h?e._h.apply(null,n):e._q.push(n)}var e={_q:[],_h:null,_v:"2.0",on:function(){i(["on",c.call(arguments)])},once:function(){i(["once",c.call(arguments)])},off:function(){i(["off",c.call(arguments)])},get:function(){if(!e._h)throw new Error("[LiveChatWidget] You can't use getters before load.");return i(["get",c.call(arguments)])},call:function(){i(["call",c.call(arguments)])},init:function(){var n=t.createElement("script");n.async=!0,n.type="text/javascript",n.src="https://cdn.livechatinc.com/tracking.js",t.head.appendChild(n)}};!n.__lc.asyncInit&&e.init(),n.LiveChatWidget=n.LiveChatWidget||e}(window,document,[].slice))
     `
     if (liveChatRef.current) {
       liveChatRef.current.appendChild(script)
@@ -32,7 +34,6 @@ export default function Contact() {
       document.body.appendChild(script)
     }
     return () => {
-      // Optionally clean up
       script.remove()
     }
   }, [])
