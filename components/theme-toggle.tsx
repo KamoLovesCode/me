@@ -22,9 +22,9 @@ export default function ThemeToggle() {
       size="icon"
       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
       aria-label="Toggle theme"
-      className="rounded-full bg-background/80 backdrop-blur-sm border"
+      className="rounded-full bg-background/80 backdrop-blur-sm border h-9 w-9 sm:h-10 sm:w-10"
     >
-      {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+      {theme === "dark" ? <Sun className="h-4 w-4 sm:h-5 sm:w-5" /> : <Moon className="h-4 w-4 sm:h-5 sm:w-5" />}
     </Button>
   )
 }

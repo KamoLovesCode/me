@@ -8,8 +8,8 @@ import Contact from "@/components/contact"
 import ThemeToggle from "@/components/theme-toggle"
 
 export const metadata: Metadata = {
-  title: "Full-Stack Developer Portfolio",
-  description: "A professional portfolio showcasing full-stack development skills and projects",
+  title: "Kamogelo Mosia | Full-Stack Developer Portfolio",
+  description: "BSc Computer Science graduate from Johannesburg, showcasing web development skills and projects",
 }
 
 export default function Home() {

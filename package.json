@@ -1,12 +1,50 @@
 {
-  "name": "my-v0-project",
-  "version": "0.1.0",
+  "name": "kamogelo-portfolio",
+  "version": "1.0.0",
   "private": true,
+  "description": "Kamogelo Mosia's Full-Stack Developer Portfolio",
+  "keywords": [
+    "portfolio",
+    "nextjs",
+    "react",
+    "typescript",
+    "tailwindcss",
+    "full-stack-developer",
+    "web-development"
+  ],
+  "homepage": "https://kamocodes.xyz",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kamocodes/portfolio.git"
+  },
+  "author": {
+    "name": "Kamogelo Mosia",
+    "email": "kamogelomosia@mail.com",
+    "url": "https://kamocodes.xyz"
+  },
   "scripts": {
     "build": "next build",
+    "clean": "rm -rf .next out",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d out",
     "dev": "next dev",
+    "export": "next export",
     "lint": "next lint",
-    "start": "next start"
+    "lint:fix": "next lint --fix",
+    "start": "next start",
+    "type-check": "tsc --noEmit"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
   },
   "dependencies": {
     "@emotion/is-prop-valid": "latest",
@@ -65,8 +103,15 @@
     "@types/node": "^22",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.16",
+    "gh-pages": "^6.1.1",
     "postcss": "^8.5",
     "tailwindcss": "^3.4.17",
     "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
   }
 }

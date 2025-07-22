@@ -16,51 +16,53 @@ type Experience = {
 export default function Experience() {
   const experiences: Experience[] = [
     {
-      company: "TechInnovate Solutions",
-      position: "Senior Full-Stack Developer",
-      period: "Jan 2022 - Present",
-      description: "Leading development of enterprise SaaS platforms for financial services clients.",
-      technologies: ["React", "Next.js", "Node.js", "TypeScript", "PostgreSQL", "AWS"],
+      company: "University of Johannesburg",
+      position: "BSc Computer Science Student",
+      period: "2021 - July 2025",
+      description:
+        "Completed comprehensive computer science degree covering programming, algorithms, data structures, and software engineering principles.",
+      technologies: ["JavaScript", "Python", "HTML/CSS", "React", "Node.js", "SQL"],
       responsibilities: [
-        "Architected and implemented scalable microservices architecture",
-        "Led a team of 5 developers using Agile methodologies",
-        "Optimized application performance, reducing load times by 40%",
-        "Implemented CI/CD pipelines with GitHub Actions and AWS",
-        "Collaborated with UX designers to create intuitive user interfaces",
+        "Developed multiple web applications using modern JavaScript frameworks",
+        "Implemented algorithms and data structures in various programming languages",
+        "Collaborated on group projects using version control systems",
+        "Created database-driven applications with proper design patterns",
+        "Participated in code reviews and software testing practices",
       ],
     },
     {
-      company: "DataFlow Systems",
-      position: "Full-Stack Developer",
-      period: "Mar 2020 - Dec 2021",
-      description: "Developed data visualization and analytics platforms for business intelligence.",
-      technologies: ["React", "Express.js", "MongoDB", "D3.js", "GraphQL", "Docker"],
+      company: "Dischem",
+      position: "Cashier",
+      period: "Jan 2020 - Dec 2020",
+      description:
+        "Provided excellent customer service in a high-volume retail environment during the COVID-19 pandemic.",
+      technologies: ["POS Systems", "Customer Service", "Cash Management", "Problem Solving"],
       responsibilities: [
-        "Built responsive dashboards with real-time data visualization",
-        "Developed RESTful and GraphQL APIs for data retrieval and manipulation",
-        "Implemented authentication and authorization systems",
-        "Optimized database queries for large datasets",
-        "Participated in code reviews and mentored junior developers",
+        "Handled high-volume transactions quickly and accurately",
+        "Assisted customers with product inquiries and resolved complaints",
+        "Maintained a neat and professional checkout area",
+        "Built rapport with customers during challenging times",
+        "Demonstrated reliability and professionalism under pressure",
       ],
     },
     {
-      company: "WebSphere Innovations",
-      position: "Frontend Developer",
-      period: "Jun 2018 - Feb 2020",
-      description: "Created interactive web applications for e-commerce and media clients.",
-      technologies: ["React", "Redux", "JavaScript", "SASS", "Webpack", "Jest"],
+      company: "F Stop Photo Labs",
+      position: "Cashier",
+      period: "Oct 2020 - Nov 2020",
+      description: "Managed photo printing services and customer transactions in a specialized retail environment.",
+      technologies: ["Photo Processing Systems", "Customer Service", "Payment Processing"],
       responsibilities: [
-        "Developed responsive and accessible user interfaces",
-        "Implemented state management with Redux and Context API",
-        "Created reusable component libraries",
-        "Wrote unit and integration tests with Jest and React Testing Library",
-        "Collaborated with backend developers to integrate APIs",
+        "Processed photo printing orders and provided product assistance",
+        "Managed payments and daily cash balancing",
+        "Explained services clearly and answered customer questions",
+        "Supported team efficiency and customer satisfaction",
+        "Maintained attention to detail in order processing",
       ],
     },
   ]
 
   return (
-    <section id="experience" className="py-20 px-4 md:px-6 lg:px-8 bg-muted/50 scroll-mt-16">
+    <section id="experience" className="py-16 sm:py-20 px-4 md:px-6 lg:px-8 bg-muted/50 scroll-mt-16">
       <div className="container mx-auto max-w-5xl">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -69,14 +71,14 @@ export default function Experience() {
           viewport={{ once: true }}
           className="text-center mb-12"
         >
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Work Experience</h2>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4">Work Experience</h2>
           <div className="h-1 w-20 bg-primary mx-auto"></div>
-          <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
+          <p className="mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto px-4">
             My professional journey building real-world applications
           </p>
         </motion.div>
 
-        <div className="space-y-8">
+        <div className="space-y-6 sm:space-y-8">
           {experiences.map((exp, index) => (
             <motion.div
               key={`${exp.company}-${index}`}
@@ -86,21 +88,23 @@ export default function Experience() {
               viewport={{ once: true }}
             >
               <Card>
-                <CardHeader className="pb-2">
-                  <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2">
-                    <CardTitle className="text-xl">{exp.position}</CardTitle>
-                    <Badge variant="outline" className="md:ml-auto w-fit">
+                <CardHeader className="pb-3">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
+                    <div>
+                      <CardTitle className="text-lg sm:text-xl">{exp.position}</CardTitle>
+                      <div className="text-base sm:text-lg font-medium text-primary">{exp.company}</div>
+                    </div>
+                    <Badge variant="outline" className="w-fit text-xs sm:text-sm">
                       {exp.period}
                     </Badge>
                   </div>
-                  <div className="text-lg font-medium text-primary">{exp.company}</div>
                 </CardHeader>
-                <CardContent>
-                  <p className="mb-4">{exp.description}</p>
+                <CardContent className="space-y-4">
+                  <p className="text-sm sm:text-base">{exp.description}</p>
 
-                  <div className="mb-4">
+                  <div>
                     <h4 className="text-sm font-semibold mb-2">Technologies:</h4>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1 sm:gap-2">
                       {exp.technologies.map((tech) => (
                         <Badge key={tech} variant="secondary" className="text-xs">
                           {tech}
@@ -113,7 +117,7 @@ export default function Experience() {
                     <h4 className="text-sm font-semibold mb-2">Key Responsibilities:</h4>
                     <ul className="list-disc pl-5 space-y-1">
                       {exp.responsibilities.map((resp, i) => (
-                        <li key={i} className="text-sm">
+                        <li key={i} className="text-xs sm:text-sm">
                           {resp}
                         </li>
                       ))}
