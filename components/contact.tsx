@@ -1,8 +1,7 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { motion } from "framer-motion"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -13,6 +12,30 @@ import { Github, Globe, Mail, MapPin, MessageCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 export default function Contact() {
+  // LiveChat widget integration
+  const liveChatRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    // Prevent duplicate script injection
+    if (document.getElementById('livechat-script')) return
+    const script = document.createElement('script')
+    script.id = 'livechat-script'
+    script.async = true
+    // Replace LICENSE_ID with your actual LiveChat license ID
+    script.innerHTML = `
+      window.__lc = window.__lc || {};
+      window.__lc.license = 12345678; // TODO: Replace with your LiveChat license ID
+      (function(n,t,c){function i(n){return e._h?e._h.apply(null,n):e._q.push(n)}var e={_q:[],_h:null,_v:"2.0",on:function(){i(["on", [].slice.call(arguments)])},once:function(){i(["once",[].slice.call(arguments)])},off:function(){i(["off",[].slice.call(arguments)])},get:function(){if(!e._h)throw new Error("LiveChatWidget: the widget is not initialized yet");return i(["get",[].slice.call(arguments)])},call:function(){i(["call",[].slice.call(arguments)])},init:function(){var n=t.createElement("script");n.async=!0,n.type="text/javascript",n.src="https://cdn.livechatinc.com/tracking.js",t.head.appendChild(n)} };!n.__lc.asyncInit&&e.init(),n.LiveChatWidget=n.LiveChatWidget||e })(window,document,[]);
+    `
+    if (liveChatRef.current) {
+      liveChatRef.current.appendChild(script)
+    } else {
+      document.body.appendChild(script)
+    }
+    return () => {
+      // Optionally clean up
+      script.remove()
+    }
+  }, [])
   const { toast } = useToast()
   const [formData, setFormData] = useState({
     name: "",
@@ -122,6 +145,18 @@ export default function Contact() {
                     {isSubmitting ? "Sending..." : "Send Message"}
                   </Button>
                 </form>
+                {/* Mini LiveChat widget below the form */}
+                <div
+                  ref={liveChatRef}
+                  className="mt-8 w-full h-80 border rounded-lg overflow-hidden bg-white dark:bg-zinc-900 shadow"
+                  style={{ position: 'relative', minHeight: 320 }}
+                  aria-label="LiveChat Mini Chat"
+                >
+                  {/* LiveChat widget will be injected here */}
+                  <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+                    Loading chat...
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </motion.div>
