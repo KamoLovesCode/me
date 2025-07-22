@@ -2,7 +2,6 @@
 
 import { useEffect } from "react"
 import { usePathname } from "next/navigation"
-import { trackPageView } from "@/app/actions/analytics"
 
 export default function AnalyticsTracker() {
   const pathname = usePathname()
@@ -26,12 +25,7 @@ export default function AnalyticsTracker() {
             localStorage.setItem("visitor_id", visitorId)
           }
 
-          await trackPageView({
-            path: pathname,
-            timestamp: Date.now(),
-            referrer: document.referrer,
-            userAgent: visitorId, // Using visitorId instead of full userAgent for privacy
-          })
+            // Analytics tracking removed for static export compatibility
         } catch (error) {
           console.error("Failed to track page view:", error)
         }
