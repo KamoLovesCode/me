@@ -1,4 +1,7 @@
 /** @type {import('next').NextConfig} */
+const isGithubPages = process.env.GITHUB_PAGES === 'true';
+const repoName = 'Me'; // Change if your repo name is different
+
 const nextConfig = {
   output: 'export',
   trailingSlash: true,
@@ -10,16 +13,10 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  images: {
-    unoptimized: true,
-  },
-  // Optimize for static export
-  experimental: {
-    optimizeCss: true,
-  },
-  // Add base path if deploying to GitHub Pages subdirectory
-  // basePath: '/portfolio',
-  // assetPrefix: '/portfolio/',
-}
+  images: { unoptimized: true },
+  output: 'export',
+  basePath: isGithubPages ? `/${repoName}` : '',
+  assetPrefix: isGithubPages ? `/${repoName}/` : '',
+};
 
-export default nextConfig
+export default nextConfig;

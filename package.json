@@ -30,21 +30,9 @@
     "dev": "next dev",
     "export": "next export",
     "lint": "next lint",
-    "lint:fix": "next lint --fix",
     "start": "next start",
-    "type-check": "tsc --noEmit"
+    "export": "GITHUB_PAGES=true next build && next export"
   },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
   },
   "dependencies": {
     "@emotion/is-prop-valid": "latest",
