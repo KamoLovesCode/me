@@ -96,59 +96,10 @@ export default function Contact() {
           >
             <Card>
               <CardContent className="p-4 sm:p-6">
-                <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="name" className="text-sm">
-                      Name
-                    </Label>
-                    <Input
-                      id="name"
-                      name="name"
-                      placeholder="Your name"
-                      required
-                      value={formData.name}
-                      onChange={handleChange}
-                      className="text-sm"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email" className="text-sm">
-                      Email
-                    </Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      placeholder="Your email address"
-                      required
-                      value={formData.email}
-                      onChange={handleChange}
-                      className="text-sm"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="message" className="text-sm">
-                      Message
-                    </Label>
-                    <Textarea
-                      id="message"
-                      name="message"
-                      placeholder="Your message"
-                      rows={4}
-                      required
-                      value={formData.message}
-                      onChange={handleChange}
-                      className="text-sm resize-none"
-                    />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={isSubmitting}>
-                    {isSubmitting ? "Sending..." : "Send Message"}
-                  </Button>
-                </form>
-                {/* Mini LiveChat widget below the form */}
+                {/* Mini LiveChat widget only */}
                 <div
                   ref={liveChatRef}
-                  className="mt-8 w-full h-80 border rounded-lg overflow-hidden bg-white dark:bg-zinc-900 shadow"
+                  className="w-full h-80 border rounded-lg overflow-hidden bg-white dark:bg-zinc-900 shadow"
                   style={{ position: 'relative', minHeight: 320 }}
                   aria-label="LiveChat Mini Chat"
                 >
