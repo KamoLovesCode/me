@@ -12,7 +12,6 @@
     "full-stack-developer",
     "web-development"
   ],
-  "homepage": "https://kamocodes.xyz",
   "repository": {
     "type": "git",
     "url": "https://github.com/kamocodes/portfolio.git"
@@ -23,15 +22,10 @@
     "url": "https://kamocodes.xyz"
   },
   "scripts": {
-    "build": "next build",
-    "clean": "rm -rf .next out",
-    "predeploy": "npm run build",
-    "deploy": "gh-pages -d out",
     "dev": "next dev",
-    "export": "next export",
-    "lint": "next lint",
+    "build": "next build",
     "start": "next start",
-    "export": "GITHUB_PAGES=true next build && next export"
+    "lint": "next lint"
   },
 
   "dependencies": {
