@@ -28,7 +28,7 @@ jobs:
         run: pnpm install
 
       - name: Build Static Site
-        run: pnpm build
+        run: GITHUB_PAGES=true pnpm build
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
