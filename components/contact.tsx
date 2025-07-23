@@ -121,16 +121,16 @@ export default function Contact() {
           </p>
         </motion.div>
 
-        <div className="flex flex-col items-center min-h-[400px]">
-          <AnimatePresence mode="wait">
+        <div className="flex flex-col items-center min-h-[400px] relative">
+          <AnimatePresence mode="wait" initial={false}>
             {sectionIndex === 0 && (
               <motion.div
                 key="chat"
-                initial={{ opacity: 0, x: 100 }}
+                initial={{ opacity: 0, x: "100%" }}
                 animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -100 }}
-                transition={{ duration: 0.4, type: 'spring', bounce: 0.2 }}
-                className="w-full flex justify-center"
+                exit={{ opacity: 0, x: "-100%" }}
+                transition={{ duration: 0.5, type: 'tween', ease: 'easeInOut' }}
+                className="w-full flex justify-center absolute"
               >
                 <Card className="w-full max-w-md shadow-lg border bg-white dark:bg-zinc-900">
                   <CardContent className="p-0 flex flex-col h-[500px]">
@@ -228,11 +228,11 @@ export default function Contact() {
             {sectionIndex === 1 && (
               <motion.div
                 key="info"
-                initial={{ opacity: 0, x: 100 }}
+                initial={{ opacity: 0, x: "100%" }}
                 animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -100 }}
-                transition={{ duration: 0.4, type: 'spring', bounce: 0.2 }}
-                className="w-full flex justify-center"
+                exit={{ opacity: 0, x: "-100%" }}
+                transition={{ duration: 0.5, type: 'tween', ease: 'easeInOut' }}
+                className="w-full flex justify-center absolute"
               >
                 <Card>
                   <CardContent className="p-4 sm:p-6">
