@@ -3,6 +3,13 @@ import type { Metadata } from "next"
 import { Inter, Poppins } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
+
+// Ensure ThemeProviderProps includes children
+declare module "@/components/theme-provider" {
+  interface ThemeProviderProps {
+    children: React.ReactNode
+  }
+}
 import AnalyticsTracker from "@/components/analytics-tracker"
 import { Toaster } from "@/components/ui/toaster"
 import { Suspense } from "react"
@@ -79,10 +86,28 @@ export default function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#0f172a" />
         <meta name="robots" content="index, follow" />
+        <link rel="canonical" href="https://kamocodes.xyz" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="icon" href="/placeholder-logo.png" sizes="any" />
+        <link rel="icon" type="image/svg+xml" href="/placeholder-logo.svg" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/placeholder-logo.png" />
         <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
-        <link rel="icon" href="/logo/favicon.ico" />
-      </head>
-      <body className={inter.className}>
+        <link rel="manifest" href="/site.webmanifest" />
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <>
+            <Suspense>
+              <AnalyticsTracker />
+              {children}
+            </Suspense>
+            <Toaster />
+          </>
+        </ThemeProvider>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <Suspense>
             <AnalyticsTracker />
