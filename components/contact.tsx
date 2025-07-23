@@ -111,14 +111,31 @@ export default function Contact() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.7, type: "spring", stiffness: 100 }}
           className="text-center mb-12"
         >
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4">Get In Touch</h2>
-          <div className="h-1 w-20 bg-primary mx-auto"></div>
-          <p className="mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto px-4">
+          <motion.h2 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.1 }}
+            className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/70"
+          >
+            Get In Touch
+          </motion.h2>
+          <motion.div 
+            initial={{ scaleX: 0 }}
+            animate={{ scaleX: 1 }}
+            transition={{ duration: 0.7, delay: 0.2 }}
+            className="h-1 w-24 bg-gradient-to-r from-primary to-primary/50 mx-auto rounded-full"
+          />
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.3 }}
+            className="mt-6 text-base sm:text-lg text-muted-foreground/90 max-w-2xl mx-auto px-4 leading-relaxed"
+          >
             Have a project in mind or want to discuss opportunities? I'd love to hear from you.
-          </p>
+          </motion.p>
         </motion.div>
 
         <div className="flex flex-col items-center min-h-[400px] relative">
@@ -132,14 +149,14 @@ export default function Contact() {
                 transition={{ duration: 0.5, type: 'tween', ease: 'easeInOut' }}
                 className="w-full flex justify-center absolute"
               >
-                <Card className="w-full max-w-md shadow-lg border bg-white dark:bg-zinc-900">
+                <Card className="w-full max-w-md shadow-xl border-0 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm">
                   <CardContent className="p-0 flex flex-col h-[500px]">
                     {/* Chat header */}
                     <motion.div
                       initial={{ opacity: 0, y: -30 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.5 }}
-                      className="p-4 border-b bg-primary/10 flex items-center gap-3"
+                      className="p-4 border-b bg-gradient-to-r from-primary/10 to-primary/5 flex items-center gap-3"
                     >
                       <Avatar className="h-10 w-10">
                         <User className="h-6 w-6 text-primary" />
@@ -150,14 +167,17 @@ export default function Contact() {
                       </div>
                     </motion.div>
                     {/* Chat messages */}
-                    <div ref={chatContainerRef} className="flex-1 overflow-y-auto bg-muted/10 p-4">
+                    <div ref={chatContainerRef} className="flex-1 overflow-y-auto bg-gradient-to-b from-muted/5 to-muted/10 p-4">
                       {messages.length === 0 && (
                         <motion.div
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ delay: 0.2 }}
-                          className="text-center text-muted-foreground mt-20"
-                        >Say hi to start chatting!</motion.div>
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: 0.2, duration: 0.5, type: "spring" }}
+                          className="text-center text-muted-foreground/80 mt-20 p-6 rounded-lg border border-dashed border-primary/20"
+                        >
+                          <MessageCircle className="w-8 h-8 mx-auto mb-3 text-primary/50" />
+                          Say hi to start chatting!
+                        </motion.div>
                       )}
                       <AnimatePresence initial={false}>
                         {messages.map((message) => (
@@ -217,8 +237,13 @@ export default function Contact() {
                         className="flex-1"
                         autoFocus
                       />
-                      <Button type="submit" size="icon" disabled={!inputMessage.trim() || loading}>
-                        <Send size={16} />
+                      <Button 
+                        type="submit" 
+                        size="icon" 
+                        disabled={!inputMessage.trim() || loading}
+                        className="bg-gradient-to-r from-primary to-primary/90 hover:shadow-md transition-shadow duration-200"
+                      >
+                        <Send size={16} className={loading ? "animate-pulse" : ""} />
                       </Button>
                     </motion.form>
                   </CardContent>
@@ -321,21 +346,28 @@ export default function Contact() {
             )}
           </AnimatePresence>
           {/* Navigation buttons */}
-          <div className="flex gap-4 mt-8">
+          <motion.div 
+            className="flex gap-4 mt-8"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4, duration: 0.5 }}
+          >
             <Button
               variant="outline"
               onClick={() => setSectionIndex(i => Math.max(0, i - 1))}
               disabled={sectionIndex === 0}
+              className="px-6 shadow-sm hover:shadow-md transition-shadow duration-200"
             >
               Back
             </Button>
             <Button
               onClick={() => setSectionIndex(i => Math.min(SECTIONS.length - 1, i + 1))}
               disabled={sectionIndex === SECTIONS.length - 1}
+              className="px-6 shadow-sm hover:shadow-md transition-shadow duration-200 bg-gradient-to-r from-primary to-primary/90"
             >
               Next
             </Button>
-          </div>
+          </motion.div>
         </div>
       </div>
     </section>
