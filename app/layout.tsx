@@ -3,13 +3,6 @@ import type { Metadata } from "next"
 import { Inter, Poppins } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
-
-// Ensure ThemeProviderProps includes children
-declare module "@/components/theme-provider" {
-  interface ThemeProviderProps {
-    children: React.ReactNode
-  }
-}
 import AnalyticsTracker from "@/components/analytics-tracker"
 import { Toaster } from "@/components/ui/toaster"
 import { Suspense } from "react"
@@ -94,20 +87,8 @@ export default function RootLayout({
         <link rel="apple-touch-icon" sizes="180x180" href="/placeholder-logo.png" />
         <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
         <link rel="manifest" href="/site.webmanifest" />
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <>
-            <Suspense>
-              <AnalyticsTracker />
-              {children}
-            </Suspense>
-            <Toaster />
-          </>
-        </ThemeProvider>
+      </head>
+      <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <Suspense>
             <AnalyticsTracker />

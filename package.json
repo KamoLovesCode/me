@@ -22,8 +22,7 @@
     "build": "next build && cp CNAME out/CNAME",
     "start": "next start",
     "lint": "next lint",
-    "export": "next export",
-    "predeploy": "npm run build && npm run export",
+    "predeploy": "npm run build",
     "deploy": "gh-pages -d out"
   },
 
