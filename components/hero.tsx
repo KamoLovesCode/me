@@ -19,7 +19,7 @@ export default function Hero() {
   }
 
   return (
-    <section className="relative min-h-screen flex flex-col items-center justify-center px-4 py-16 overflow-hidden">
+    <section id="hero" className="relative min-h-screen flex flex-col items-center justify-center px-4 py-16 overflow-hidden">
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/20 via-background to-background"></div>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
