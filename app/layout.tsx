@@ -83,7 +83,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="icon" href="/logo/artificial-intelligence.png" sizes="any" />
-        <link rel="icon" type="image/svg+xml" href="/placeholder-logo.svg" />
+        <link rel="icon" type="image/png" href="/logo/artificial-intelligence.png" />
         <link rel="apple-touch-icon" sizes="180x180" href="/logo/artificial-intelligence.png" />
         <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
         <link rel="manifest" href="/site.webmanifest" />
