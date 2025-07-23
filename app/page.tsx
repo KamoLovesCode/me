@@ -6,6 +6,8 @@ import Projects from "@/components/projects"
 import Experience from "@/components/experience"
 import Contact from "@/components/contact"
 import ThemeToggle from "@/components/theme-toggle"
+import SectionNavigator from "@/components/section-navigator"
+import ScrollProgress from "@/components/scroll-progress"
 
 export const metadata: Metadata = {
   title: "Kamogelo Mosia | Full-Stack Developer Portfolio",
@@ -14,7 +16,9 @@ export const metadata: Metadata = {
 
 export default function Home() {
   return (
-    <main className="min-h-screen">
+    <main className="min-h-screen section-snap">
+      <ScrollProgress />
+      <SectionNavigator />
       <div className="fixed top-4 right-4 z-50">
         <ThemeToggle />
       </div>

@@ -153,6 +153,41 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Enhanced scrollbar styling */
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary));
+  border-radius: 6px;
+  border: 2px solid hsl(var(--background));
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary) / 0.8);
+}
+
+/* Firefox scrollbar */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--primary)) hsl(var(--muted));
+}
+
+/* Section scroll snap for better navigation */
+.section-snap {
+  scroll-snap-type: y mandatory;
+}
+
+.section-snap section {
+  scroll-snap-align: start;
+}
+
 /* Focus styles for accessibility */
 *:focus-visible {
   @apply outline-2 outline-offset-2 outline-primary;
