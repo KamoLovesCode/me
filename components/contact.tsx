@@ -8,8 +8,26 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { Github, Globe, Mail, MapPin, MessageCircle } from "lucide-react"
+import { Avatar } from "@/components/ui/avatar"
+import { Github, Globe, Mail, MapPin, MessageCircle, Send, User, Bot, ChevronDown, X } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+
+// Define chat message type
+type Message = {
+  id: string;
+  content: string;
+  sender: 'user' | 'bot';
+  timestamp: Date;
+}
+
+// Predefined bot responses
+const BOT_RESPONSES = [
+  "Hi there! Thanks for reaching out. How can I help you today?",
+  "I'm currently looking for junior developer roles or internships. Let me know if you have any opportunities!",
+  "You can reach me via email at kamogelomosia@mail.com or WhatsApp at 069 843 9670.",
+  "I specialize in React, Next.js, TypeScript, and Node.js. I'm always eager to learn new technologies!",
+  "I'd be happy to discuss how my skills could benefit your project or team. When would be a good time to chat further?",
+];
 
 export default function Contact() {
   const { toast } = useToast()
@@ -19,6 +37,24 @@ export default function Contact() {
     message: "",
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  
+  // Chat state
+  const [chatOpen, setChatOpen] = useState(false)
+  const [inputMessage, setInputMessage] = useState("")
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: '1',
+      content: "Hello! 👋 I'm Kamogelo's virtual assistant. Feel free to ask anything about my skills, experience, or projects!",
+      sender: 'bot',
+      timestamp: new Date(),
+    }
+  ])
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  
+  // Auto-scroll to bottom of chat when new messages appear
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -45,6 +81,48 @@ export default function Contact() {
     const message = encodeURIComponent("Hi Kamogelo! I found your portfolio and would like to connect.")
     window.open(`https://wa.me/27698439670?text=${message}`, "_blank")
   }
+  
+  // Send message in chat
+  const handleSendMessage = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!inputMessage.trim()) return
+    
+    // Add user message
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      content: inputMessage,
+      sender: 'user',
+      timestamp: new Date(),
+    }
+    
+    setMessages(prev => [...prev, userMessage])
+    setInputMessage("")
+    
+    // Simulate bot thinking and respond after delay
+    setTimeout(() => {
+      // Get a random response or a more specific one based on keywords
+      let botResponse = BOT_RESPONSES[Math.floor(Math.random() * BOT_RESPONSES.length)]
+      
+      // Simple keyword matching for more relevant responses
+      const lowercaseMsg = inputMessage.toLowerCase()
+      if (lowercaseMsg.includes('job') || lowercaseMsg.includes('hire') || lowercaseMsg.includes('work')) {
+        botResponse = BOT_RESPONSES[1]
+      } else if (lowercaseMsg.includes('contact') || lowercaseMsg.includes('email') || lowercaseMsg.includes('reach')) {
+        botResponse = BOT_RESPONSES[2]
+      } else if (lowercaseMsg.includes('skill') || lowercaseMsg.includes('tech') || lowercaseMsg.includes('know')) {
+        botResponse = BOT_RESPONSES[3]
+      }
+      
+      const botMessage: Message = {
+        id: Date.now().toString(),
+        content: botResponse,
+        sender: 'bot',
+        timestamp: new Date(),
+      }
+      
+      setMessages(prev => [...prev, botMessage])
+    }, 1000)
+  }
 
   return (
     <section id="contact" className="py-16 sm:py-20 px-4 md:px-6 lg:px-8 scroll-mt-16">
@@ -63,7 +141,101 @@ export default function Contact() {
           </p>
         </motion.div>
 
-        <div className="grid lg:grid-cols-1 gap-8 items-start">
+        <div className="grid lg:grid-cols-2 gap-8 items-start">
+          {/* Chat UI Card */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            viewport={{ once: true }}
+          >
+            <Card className="h-full">
+              <CardContent className="p-0 overflow-hidden">
+                {/* Chat header */}
+                <div className="p-4 border-b bg-muted/30 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                      <Bot size={20} />
+                    </div>
+                    <div>
+                      <h3 className="font-medium text-sm">Chat with my Assistant</h3>
+                      <p className="text-xs text-muted-foreground">Ask me anything!</p>
+                    </div>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8" 
+                    onClick={() => setChatOpen(!chatOpen)}
+                    aria-label={chatOpen ? "Minimize chat" : "Expand chat"}
+                  >
+                    {chatOpen ? <X size={16} /> : <ChevronDown size={16} />}
+                  </Button>
+                </div>
+                
+                {chatOpen && (
+                  <>
+                    {/* Chat messages container */}
+                    <div className="p-4 h-[320px] overflow-y-auto bg-muted/10">
+                      {messages.map((message) => (
+                        <div 
+                          key={message.id} 
+                          className={`mb-4 flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                        >
+                          <div className={`max-w-[80%] flex gap-2 ${message.sender === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                            {/* Avatar */}
+                            <div className="flex-shrink-0">
+                              <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
+                                message.sender === 'user' 
+                                  ? 'bg-primary text-primary-foreground' 
+                                  : 'bg-muted'
+                              }`}>
+                                {message.sender === 'user' ? (
+                                  <User size={14} />
+                                ) : (
+                                  <Bot size={14} />
+                                )}
+                              </div>
+                            </div>
+                            
+                            {/* Message bubble */}
+                            <div 
+                              className={`py-2 px-3 rounded-lg ${
+                                message.sender === 'user' 
+                                  ? 'bg-primary text-primary-foreground rounded-tr-none' 
+                                  : 'bg-muted rounded-tl-none'
+                              }`}
+                            >
+                              <p className="text-sm">{message.content}</p>
+                              <span className="text-xs opacity-70 mt-1 block">
+                                {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      <div ref={messagesEndRef} />
+                    </div>
+                    
+                    {/* Chat input */}
+                    <form onSubmit={handleSendMessage} className="p-3 border-t flex gap-2">
+                      <Input
+                        value={inputMessage}
+                        onChange={(e) => setInputMessage(e.target.value)}
+                        placeholder="Type your message..."
+                        className="flex-1"
+                      />
+                      <Button type="submit" size="icon" disabled={!inputMessage.trim()}>
+                        <Send size={16} />
+                      </Button>
+                    </form>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Contact Info Card */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             whileInView={{ opacity: 1, x: 0 }}
