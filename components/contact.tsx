@@ -2,136 +2,116 @@
 
 import type React from "react"
 import { useState, useEffect, useRef } from "react"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
 import { Avatar } from "@/components/ui/avatar"
-import { Github, Globe, Mail, MapPin, MessageCircle, Send, User, Bot, ChevronDown, X } from "lucide-react"
+import { Github, Globe, Mail, MapPin, MessageCircle, Send, User } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
-// Define chat message type
+// WhatsApp-style chat message type
 type Message = {
   id: string;
   content: string;
-  sender: 'user' | 'bot';
-  timestamp: Date;
+  sender: 'user' | 'me';
+  timestamp: number;
 }
 
-// Predefined bot responses
-const BOT_RESPONSES = [
-  "Hi there! Thanks for reaching out. How can I help you today?",
-  "I'm currently looking for junior developer roles or internships. Let me know if you have any opportunities!",
-  "You can reach me via email at kamogelomosia@mail.com or WhatsApp at 069 843 9670.",
-  "I specialize in React, Next.js, TypeScript, and Node.js. I'm always eager to learn new technologies!",
-  "I'd be happy to discuss how my skills could benefit your project or team. When would be a good time to chat further?",
-];
+const SECTIONS = [
+  { key: 'chat', label: 'Chat' },
+  { key: 'info', label: 'Contact Info' },
+]
 
 export default function Contact() {
-  const { toast } = useToast()
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    message: "",
-  })
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  
-  // Chat state
-  const [chatOpen, setChatOpen] = useState(false)
+  // WhatsApp-style chat state
   const [inputMessage, setInputMessage] = useState("")
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      content: "Hello! 👋 I'm Kamogelo's virtual assistant. Feel free to ask anything about my skills, experience, or projects!",
-      sender: 'bot',
-      timestamp: new Date(),
-    }
-  ])
+  const [messages, setMessages] = useState<Message[]>([])
+  const [loading, setLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  
-  // Auto-scroll to bottom of chat when new messages appear
+  const chatContainerRef = useRef<HTMLDivElement>(null)
+  // Section navigation
+  const [sectionIndex, setSectionIndex] = useState(0)
+
+  // Telegram bot config
+  const TELEGRAM_BOT_TOKEN = "-7967827699:AAE9xjyzzIkkHKh4IrFnNV6OYcGeJlkWVNo"
+  const TELEGRAM_CHAT_ID = null // Will be set after first message
+  const [chatId, setChatId] = useState<string | null>(null)
+
+  // Scroll to bottom on new message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-  }
+  // Poll for new messages from Telegram (simulate live)
+  useEffect(() => {
+    if (!chatId) return
+    let lastMessageId: number | null = null
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getUpdates?timeout=5`)
+        const data = await res.json()
+        if (data.result && data.result.length > 0) {
+          const updates = data.result
+          const lastUpdate = updates[updates.length - 1]
+          if (lastUpdate.message && lastUpdate.message.chat && lastUpdate.message.chat.id.toString() === chatId) {
+            if (!lastMessageId || lastUpdate.message.message_id > lastMessageId) {
+              lastMessageId = lastUpdate.message.message_id
+              // Only add if not already in messages
+              if (!messages.some(m => m.id === lastUpdate.message.message_id.toString())) {
+                setMessages(prev => [...prev, {
+                  id: lastUpdate.message.message_id.toString(),
+                  content: lastUpdate.message.text,
+                  sender: 'me',
+                  timestamp: lastUpdate.message.date * 1000,
+                }])
+              }
+            }
+          }
+        }
+      } catch {}
+    }, 2000)
+    return () => clearInterval(interval)
+  }, [chatId, messages])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-
-    // Simulate form submission
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-
-    toast({
-      title: "Message sent!",
-      description: "Thank you for reaching out. I'll get back to you soon.",
-    })
-
-    setFormData({ name: "", email: "", message: "" })
-    setIsSubmitting(false)
-  }
-
-  const handleWhatsAppClick = () => {
-    const message = encodeURIComponent("Hi Kamogelo! I found your portfolio and would like to connect.")
-    window.open(`https://wa.me/27698439670?text=${message}`, "_blank")
-  }
-  
-  // Send message in chat
-  const handleSendMessage = (e: React.FormEvent) => {
+  // Send message to Telegram
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!inputMessage.trim()) return
-    
-    // Add user message
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      content: inputMessage,
-      sender: 'user',
-      timestamp: new Date(),
-    }
-    
-    setMessages(prev => [...prev, userMessage])
-    setInputMessage("")
-    
-    // Simulate bot thinking and respond after delay
-    setTimeout(() => {
-      // Get a random response or a more specific one based on keywords
-      let botResponse = BOT_RESPONSES[Math.floor(Math.random() * BOT_RESPONSES.length)]
-      
-      // Simple keyword matching for more relevant responses
-      const lowercaseMsg = inputMessage.toLowerCase()
-      if (lowercaseMsg.includes('job') || lowercaseMsg.includes('hire') || lowercaseMsg.includes('work')) {
-        botResponse = BOT_RESPONSES[1]
-      } else if (lowercaseMsg.includes('contact') || lowercaseMsg.includes('email') || lowercaseMsg.includes('reach')) {
-        botResponse = BOT_RESPONSES[2]
-      } else if (lowercaseMsg.includes('skill') || lowercaseMsg.includes('tech') || lowercaseMsg.includes('know')) {
-        botResponse = BOT_RESPONSES[3]
+    setLoading(true)
+    try {
+      // Send message to bot (user -> you)
+      const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId || '',
+          text: inputMessage,
+        })
+      })
+      const data = await res.json()
+      if (data.ok) {
+        setMessages(prev => [...prev, {
+          id: data.result.message_id.toString(),
+          content: inputMessage,
+          sender: 'user',
+          timestamp: Date.now(),
+        }])
+        setInputMessage("")
+        if (!chatId) setChatId(data.result.chat.id.toString())
       }
-      
-      const botMessage: Message = {
-        id: Date.now().toString(),
-        content: botResponse,
-        sender: 'bot',
-        timestamp: new Date(),
-      }
-      
-      setMessages(prev => [...prev, botMessage])
-    }, 1000)
+    } catch {}
+    setLoading(false)
   }
+
 
   return (
     <section id="contact" className="py-16 sm:py-20 px-4 md:px-6 lg:px-8 scroll-mt-16">
       <div className="container mx-auto max-w-5xl">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          viewport={{ once: true }}
           className="text-center mb-12"
         >
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4">Get In Touch</h2>
@@ -141,195 +121,223 @@ export default function Contact() {
           </p>
         </motion.div>
 
-        <div className="grid lg:grid-cols-2 gap-8 items-start">
-          {/* Chat UI Card */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            viewport={{ once: true }}
-          >
-            <Card className="h-full">
-              <CardContent className="p-0 overflow-hidden">
-                {/* Chat header */}
-                <div className="p-4 border-b bg-muted/30 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                      <Bot size={20} />
-                    </div>
-                    <div>
-                      <h3 className="font-medium text-sm">Chat with my Assistant</h3>
-                      <p className="text-xs text-muted-foreground">Ask me anything!</p>
-                    </div>
-                  </div>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-8 w-8" 
-                    onClick={() => setChatOpen(!chatOpen)}
-                    aria-label={chatOpen ? "Minimize chat" : "Expand chat"}
-                  >
-                    {chatOpen ? <X size={16} /> : <ChevronDown size={16} />}
-                  </Button>
-                </div>
-                
-                {chatOpen && (
-                  <>
-                    {/* Chat messages container */}
-                    <div className="p-4 h-[320px] overflow-y-auto bg-muted/10">
-                      {messages.map((message) => (
-                        <div 
-                          key={message.id} 
-                          className={`mb-4 flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                        >
-                          <div className={`max-w-[80%] flex gap-2 ${message.sender === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-                            {/* Avatar */}
-                            <div className="flex-shrink-0">
-                              <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
-                                message.sender === 'user' 
-                                  ? 'bg-primary text-primary-foreground' 
-                                  : 'bg-muted'
-                              }`}>
-                                {message.sender === 'user' ? (
+        <div className="flex flex-col items-center min-h-[400px]">
+          <AnimatePresence mode="wait">
+            {sectionIndex === 0 && (
+              <motion.div
+                key="chat"
+                initial={{ opacity: 0, x: 100 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -100 }}
+                transition={{ duration: 0.4, type: 'spring', bounce: 0.2 }}
+                className="w-full flex justify-center"
+              >
+                <Card className="w-full max-w-md shadow-lg border bg-white dark:bg-zinc-900">
+                  <CardContent className="p-0 flex flex-col h-[500px]">
+                    {/* Chat header */}
+                    <motion.div
+                      initial={{ opacity: 0, y: -30 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5 }}
+                      className="p-4 border-b bg-primary/10 flex items-center gap-3"
+                    >
+                      <Avatar className="h-10 w-10">
+                        <User className="h-6 w-6 text-primary" />
+                      </Avatar>
+                      <div>
+                        <h3 className="font-semibold text-base">Chat with Kamogelo</h3>
+                        <p className="text-xs text-muted-foreground">WhatsApp-style chat</p>
+                      </div>
+                    </motion.div>
+                    {/* Chat messages */}
+                    <div ref={chatContainerRef} className="flex-1 overflow-y-auto bg-muted/10 p-4">
+                      {messages.length === 0 && (
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: 0.2 }}
+                          className="text-center text-muted-foreground mt-20"
+                        >Say hi to start chatting!</motion.div>
+                      )}
+                      <AnimatePresence initial={false}>
+                        {messages.map((message) => (
+                          <motion.div
+                            key={message.id}
+                            initial={{ opacity: 0, x: message.sender === 'user' ? 60 : -60 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: message.sender === 'user' ? 60 : -60 }}
+                            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                            className={`mb-4 flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                          >
+                            <div className={`max-w-[80%] flex gap-2 ${message.sender === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                              {/* Avatar */}
+                              <div className="flex-shrink-0">
+                                <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
+                                  message.sender === 'user'
+                                    ? 'bg-primary text-primary-foreground'
+                                    : 'bg-muted'
+                                }`}>
                                   <User size={14} />
-                                ) : (
-                                  <Bot size={14} />
-                                )}
+                                </div>
                               </div>
+                              {/* Message bubble */}
+                              <motion.div
+                                initial={{ scale: 0.95 }}
+                                animate={{ scale: 1 }}
+                                transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                                className={`py-2 px-3 rounded-lg text-sm ${
+                                  message.sender === 'user'
+                                    ? 'bg-primary text-primary-foreground rounded-tr-none'
+                                    : 'bg-muted rounded-tl-none'
+                                }`}
+                              >
+                                <span>{message.content}</span>
+                                <span className="text-xs opacity-70 mt-1 block text-right">
+                                  {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </motion.div>
                             </div>
-                            
-                            {/* Message bubble */}
-                            <div 
-                              className={`py-2 px-3 rounded-lg ${
-                                message.sender === 'user' 
-                                  ? 'bg-primary text-primary-foreground rounded-tr-none' 
-                                  : 'bg-muted rounded-tl-none'
-                              }`}
-                            >
-                              <p className="text-sm">{message.content}</p>
-                              <span className="text-xs opacity-70 mt-1 block">
-                                {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
                       <div ref={messagesEndRef} />
                     </div>
-                    
                     {/* Chat input */}
-                    <form onSubmit={handleSendMessage} className="p-3 border-t flex gap-2">
+                    <motion.form
+                      onSubmit={handleSendMessage}
+                      initial={{ opacity: 0, y: 30 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.4, delay: 0.1 }}
+                      className="p-3 border-t flex gap-2 bg-white dark:bg-zinc-900"
+                    >
                       <Input
                         value={inputMessage}
                         onChange={(e) => setInputMessage(e.target.value)}
                         placeholder="Type your message..."
                         className="flex-1"
+                        autoFocus
                       />
-                      <Button type="submit" size="icon" disabled={!inputMessage.trim()}>
+                      <Button type="submit" size="icon" disabled={!inputMessage.trim() || loading}>
                         <Send size={16} />
                       </Button>
-                    </form>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Contact Info Card */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-            viewport={{ once: true }}
-          >
-            <Card>
-              <CardContent className="p-4 sm:p-6">
-                <h3 className="text-lg sm:text-xl font-semibold mb-6">Connect With Me</h3>
-
-                <div className="space-y-4 sm:space-y-6">
-                  <div className="flex items-center gap-4">
-                    <div className="p-2 sm:p-3 rounded-full bg-primary/10 text-primary shrink-0">
-                      <Mail className="h-4 w-4 sm:h-6 sm:w-6" />
-                    </div>
-                    <div className="min-w-0">
-                      <h4 className="font-medium text-sm sm:text-base">Email</h4>
-                      <a
-                        href="mailto:kamogelomosia@mail.com"
-                        className="text-xs sm:text-sm text-muted-foreground hover:text-primary transition-colors break-all"
-                      >
-                        kamogelomosia@mail.com
-                      </a>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-4">
-                    <div className="p-2 sm:p-3 rounded-full bg-green-100 text-green-600 shrink-0">
-                      <MessageCircle className="h-4 w-4 sm:h-6 sm:w-6" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <h4 className="font-medium text-sm sm:text-base">WhatsApp</h4>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs sm:text-sm text-muted-foreground">069 843 9670</span>
-                        <Button
-                          size="sm"
-                          onClick={handleWhatsAppClick}
-                          className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1"
-                        >
-                          Chat Now
-                        </Button>
+                    </motion.form>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
+            {sectionIndex === 1 && (
+              <motion.div
+                key="info"
+                initial={{ opacity: 0, x: 100 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -100 }}
+                transition={{ duration: 0.4, type: 'spring', bounce: 0.2 }}
+                className="w-full flex justify-center"
+              >
+                <Card>
+                  <CardContent className="p-4 sm:p-6">
+                    <h3 className="text-lg sm:text-xl font-semibold mb-6">Connect With Me</h3>
+                    <div className="space-y-4 sm:space-y-6">
+                      <div className="flex items-center gap-4">
+                        <div className="p-2 sm:p-3 rounded-full bg-primary/10 text-primary shrink-0">
+                          <Mail className="h-4 w-4 sm:h-6 sm:w-6" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="font-medium text-sm sm:text-base">Email</h4>
+                          <a
+                            href="mailto:kamogelomosia@mail.com"
+                            className="text-xs sm:text-sm text-muted-foreground hover:text-primary transition-colors break-all"
+                          >
+                            kamogelomosia@mail.com
+                          </a>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="p-2 sm:p-3 rounded-full bg-green-100 text-green-600 shrink-0">
+                          <MessageCircle className="h-4 w-4 sm:h-6 sm:w-6" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="font-medium text-sm sm:text-base">WhatsApp</h4>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs sm:text-sm text-muted-foreground">069 843 9670</span>
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                const message = encodeURIComponent("Hi Kamogelo! I found your portfolio and would like to connect.")
+                                window.open(`https://wa.me/27698439670?text=${message}`, "_blank")
+                              }}
+                              className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1"
+                            >
+                              Chat Now
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="p-2 sm:p-3 rounded-full bg-primary/10 text-primary shrink-0">
+                          <Github className="h-4 w-4 sm:h-6 sm:w-6" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="font-medium text-sm sm:text-base">GitHub</h4>
+                          <a
+                            href="https://github.com/kamocodes"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs sm:text-sm text-muted-foreground hover:text-primary transition-colors break-all"
+                          >
+                            github.com/kamocodes
+                          </a>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="p-2 sm:p-3 rounded-full bg-primary/10 text-primary shrink-0">
+                          <Globe className="h-4 w-4 sm:h-6 sm:w-6" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="font-medium text-sm sm:text-base">Website</h4>
+                          <a
+                            href="https://kamocodes.xyz"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs sm:text-sm text-muted-foreground hover:text-primary transition-colors break-all"
+                          >
+                            kamocodes.xyz
+                          </a>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="p-2 sm:p-3 rounded-full bg-primary/10 text-primary shrink-0">
+                          <MapPin className="h-4 w-4 sm:h-6 sm:w-6" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="font-medium text-sm sm:text-base">Location</h4>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Kempton Park, Johannesburg</p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-
-                  <div className="flex items-center gap-4">
-                    <div className="p-2 sm:p-3 rounded-full bg-primary/10 text-primary shrink-0">
-                      <Github className="h-4 w-4 sm:h-6 sm:w-6" />
-                    </div>
-                    <div className="min-w-0">
-                      <h4 className="font-medium text-sm sm:text-base">GitHub</h4>
-                      <a
-                        href="https://github.com/kamocodes"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs sm:text-sm text-muted-foreground hover:text-primary transition-colors break-all"
-                      >
-                        github.com/kamocodes
-                      </a>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-4">
-                    <div className="p-2 sm:p-3 rounded-full bg-primary/10 text-primary shrink-0">
-                      <Globe className="h-4 w-4 sm:h-6 sm:w-6" />
-                    </div>
-                    <div className="min-w-0">
-                      <h4 className="font-medium text-sm sm:text-base">Website</h4>
-                      <a
-                        href="https://kamocodes.xyz"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs sm:text-sm text-muted-foreground hover:text-primary transition-colors break-all"
-                      >
-                        kamocodes.xyz
-                      </a>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-4">
-                    <div className="p-2 sm:p-3 rounded-full bg-primary/10 text-primary shrink-0">
-                      <MapPin className="h-4 w-4 sm:h-6 sm:w-6" />
-                    </div>
-                    <div className="min-w-0">
-                      <h4 className="font-medium text-sm sm:text-base">Location</h4>
-                      <p className="text-xs sm:text-sm text-muted-foreground">Kempton Park, Johannesburg</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          {/* Navigation buttons */}
+          <div className="flex gap-4 mt-8">
+            <Button
+              variant="outline"
+              onClick={() => setSectionIndex(i => Math.max(0, i - 1))}
+              disabled={sectionIndex === 0}
+            >
+              Back
+            </Button>
+            <Button
+              onClick={() => setSectionIndex(i => Math.min(SECTIONS.length - 1, i + 1))}
+              disabled={sectionIndex === SECTIONS.length - 1}
+            >
+              Next
+            </Button>
+          </div>
         </div>
       </div>
     </section>
-  )
+  );
 }
