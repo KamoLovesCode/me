@@ -1,11 +1,13 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { MessageCircle, X, UserCog, Phone } from 'lucide-react'
+import { MessageCircle, X, UserCog, Phone, Search, MoreVertical, Send, Paperclip, Smile, Settings, Users, Hash } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
 import FloatingVoiceAssistant from "@/components/FloatingVoiceAssistant"
 
 
