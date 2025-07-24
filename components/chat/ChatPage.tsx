@@ -74,9 +74,7 @@ export default function ChatPage() {
 
   useEffect(() => {
     // Always scroll to bottom on new message, even if not focused
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, 50);
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   const sendMessage = () => {
@@ -170,16 +168,16 @@ export default function ChatPage() {
               .map(msg => (
                 <div
                   key={msg.id}
-                  className={`flex flex-col ${msg.from === user ? 'items-end' : 'items-start'} w-full`}
+                  className={`flex flex-col w-full ${msg.from === user ? 'items-end' : 'items-start'}`}
                 >
                   <div
-                    className={`w-full max-w-[90vw] md:max-w-md p-2 rounded-lg break-words overflow-x-auto
+                    className={`relative w-full max-w-[90vw] md:max-w-md p-2 rounded-lg break-words overflow-x-auto
                       ${msg.from === user
                         ? 'bg-primary text-primary-foreground rounded-br-none'
-                        : 'bg-green-100 text-green-900 dark:bg-green-900 dark:text-green-100 rounded-bl-none border border-green-300 dark:border-green-700'}`}
+                        : 'bg-white text-gray-900 dark:bg-zinc-800 dark:text-gray-100 border border-gray-200 dark:border-zinc-700 rounded-bl-none'}`}
                     style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
                   >
-                    <span className={`block text-xs font-semibold mb-1 opacity-80 ${msg.from === user ? 'text-primary-foreground' : 'text-green-700 dark:text-green-200'}`}>{msg.from}</span>
+                    <span className={`block text-xs font-semibold mb-1 opacity-80 ${msg.from === user ? 'text-primary-foreground' : 'text-primary'}`}>{msg.from === user ? 'You' : msg.from}</span>
                     <span className="block text-base">{msg.text}</span>
                   </div>
                 </div>
