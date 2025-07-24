@@ -65,6 +65,15 @@ export default function ChatPage() {
           localStorage.setItem(`chat-history-${user}`, JSON.stringify(updated))
           return updated
         })
+// Utility to generate a persistent device ID (works on GitHub Pages, Vercel, etc.)
+function getDeviceId() {
+  let id = localStorage.getItem('deviceId');
+  if (!id) {
+    id = 'dev-' + Math.random().toString(36).substr(2, 9) + Date.now();
+    localStorage.setItem('deviceId', id);
+  }
+  return id;
+}
       }
     }
     return () => {
@@ -128,6 +137,9 @@ export default function ChatPage() {
       <header className="p-4 border-b border-border flex items-center justify-between">
         <h1 className="text-xl font-semibold">Chat</h1>
         <Link href="/">
+  const [deviceId] = useState(getDeviceId());
+  const [topic, setTopic] = useState("");
+  const [showDetails, setShowDetails] = useState(true);
           <X size={24} className="text-muted-foreground hover:text-foreground cursor-pointer" />
         </Link>
       </header>
