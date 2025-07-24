@@ -231,13 +231,11 @@ export default function ChatPage() {
 
   const handleVoiceTranscript = (transcript: string) => {
     // Add the voice transcript as a message from the user
-    if (ws.current && user) {
-      ws.current.send(JSON.stringify({
-        type: 'message',
-        from: user,
-        to,
-        text: `🎤 ${transcript}`,
-      }))
+    if (chatSystem.current && user) {
+      const success = chatSystem.current.sendMessage(to, `🎤 ${transcript}`)
+      if (!success) {
+        console.log('Voice message requires permission or failed to send')
+      }
     }
   }
 
@@ -267,56 +265,56 @@ export default function ChatPage() {
     return (
       <div className="flex items-center justify-center min-h-screen bg-black p-4">
         <div className="bg-black rounded-lg shadow-xl p-6 w-full max-w-md border border-gray-800">
-          <h2 className="text-xl font-semibold text-center mb-2 text-black dark:text-white">Join the Chat</h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 text-center mb-6">
+          <h2 className="text-xl font-semibold text-center mb-2 text-white">Join the Chat</h2>
+          <p className="text-sm text-gray-400 text-center mb-6">
             Please provide your information to start chatting. You'll be assigned a unique color.
           </p>
           
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium mb-1 block text-black dark:text-white">Full Name *</label>
+              <label className="text-sm font-medium mb-1 block text-white">Full Name *</label>
               <Input
                 placeholder="John Doe"
                 value={userInfo.name}
                 onChange={e => setUserInfo(prev => ({ ...prev, name: e.target.value }))}
-                className={`bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-black dark:text-white ${registrationErrors.some(e => e.includes('Name')) ? 'border-red-500' : ''}`}
+                className={`bg-gray-900 border-gray-700 text-white placeholder:text-gray-500 focus:border-gray-600 ${registrationErrors.some(e => e.includes('Name')) ? 'border-red-500' : ''}`}
               />
             </div>
             
             <div>
-              <label className="text-sm font-medium mb-1 block text-black dark:text-white">Email Address *</label>
+              <label className="text-sm font-medium mb-1 block text-white">Email Address *</label>
               <Input
                 type="email"
                 placeholder="john@example.com"
                 value={userInfo.email}
                 onChange={e => setUserInfo(prev => ({ ...prev, email: e.target.value }))}
-                className={`bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-black dark:text-white ${registrationErrors.some(e => e.includes('email')) ? 'border-red-500' : ''}`}
+                className={`bg-gray-900 border-gray-700 text-white placeholder:text-gray-500 focus:border-gray-600 ${registrationErrors.some(e => e.includes('email')) ? 'border-red-500' : ''}`}
               />
             </div>
             
             <div>
-              <label className="text-sm font-medium mb-1 block text-black dark:text-white">Phone Number *</label>
+              <label className="text-sm font-medium mb-1 block text-white">Phone Number *</label>
               <Input
                 placeholder="+1 (555) 123-4567"
                 value={userInfo.phone}
                 onChange={e => setUserInfo(prev => ({ ...prev, phone: e.target.value }))}
-                className={`bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-black dark:text-white ${registrationErrors.some(e => e.includes('phone')) ? 'border-red-500' : ''}`}
+                className={`bg-gray-900 border-gray-700 text-white placeholder:text-gray-500 focus:border-gray-600 ${registrationErrors.some(e => e.includes('phone')) ? 'border-red-500' : ''}`}
               />
             </div>
             
             <div>
-              <label className="text-sm font-medium mb-1 block text-black dark:text-white">Company/Organization *</label>
+              <label className="text-sm font-medium mb-1 block text-white">Company/Organization *</label>
               <Input
                 placeholder="Acme Corp"
                 value={userInfo.company}
                 onChange={e => setUserInfo(prev => ({ ...prev, company: e.target.value }))}
-                className={`bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-black dark:text-white ${registrationErrors.some(e => e.includes('Company')) ? 'border-red-500' : ''}`}
+                className={`bg-gray-900 border-gray-700 text-white placeholder:text-gray-500 focus:border-gray-600 ${registrationErrors.some(e => e.includes('Company')) ? 'border-red-500' : ''}`}
               />
             </div>
             
             {registrationErrors.length > 0 && (
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
-                <ul className="text-sm text-red-600 dark:text-red-400 space-y-1">
+              <div className="bg-red-900/20 border border-red-800 rounded-lg p-3">
+                <ul className="text-sm text-red-400 space-y-1">
                   {registrationErrors.map((error, index) => (
                     <li key={index}>• {error}</li>
                   ))}
@@ -326,7 +324,7 @@ export default function ChatPage() {
             
             <Button
               onClick={registerUser}
-              className="w-full bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200"
+              className="w-full bg-white text-black hover:bg-gray-200"
               disabled={!userInfo.name || !userInfo.email || !userInfo.phone || !userInfo.company}
             >
               Start Chatting
