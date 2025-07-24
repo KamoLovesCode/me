@@ -1,303 +1,151 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useRef } from "react"
-import { MessageCircle, X, UserCog, Phone, Search, MoreVertical, Send, Paperclip, Smile, Settings, Users, Hash, ArrowLeft } from 'lucide-react'
-import Image from 'next/image'
-import Link from 'next/link'
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
-import FloatingVoiceAssistant from "@/components/FloatingVoiceAssistant"
+import React, { useState, useEffect, useRef } from "react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import FloatingVoiceAssistant from "@/components/FloatingVoiceAssistant";
+import { Hash, ArrowLeft, Search, MoreVertical, X } from "lucide-react";
 
-// Import the peer chat system
-let PeerChatSystem: any = null;
-if (typeof window !== 'undefined') {
-  try {
-    PeerChatSystem = require('@/lib/peer-chat').default;
-  } catch (error) {
-    console.warn('Peer chat system not available:', error);
-  }
-}
-
-
+// Message type for chat messages
 interface Message {
   id: number;
   text: string;
   from: string;
   to?: string;
   time?: number;
-}
 
 export default function ChatPage() {
-  const [isAdmin, setIsAdmin] = useState(false)
-  const [showAdminLogin, setShowAdminLogin] = useState(false)
-  const [showPhonebook, setShowPhonebook] = useState(false)
-  const [showUserRegistration, setShowUserRegistration] = useState(true)
-  const [adminPassword, setAdminPassword] = useState("")
-  
-  // User registration fields
-  const [userInfo, setUserInfo] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    company: ""
-  })
-  const [registrationErrors, setRegistrationErrors] = useState<string[]>([])
-  
-  // Chat state
-  const [messages, setMessages] = useState<Message[]>([])
-  const [input, setInput] = useState("")
-  const [users, setUsers] = useState<string[]>([])
-  const [user, setUser] = useState<string>("")
-  const [to, setTo] = useState<string>('all')
-  const [nameInput, setNameInput] = useState("")
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  
-  // Peer chat system
-  const chatSystem = useRef<any>(null)
-  
-  // User color assignment
-  const [userColor, setUserColor] = useState<string>("")
-  const [onlineUsers, setOnlineUsers] = useState<Array<{name: string, color: string, email: string, phone: string}>>([])
-  
-  // Message permissions
-  const [pendingRequests, setPendingRequests] = useState<Array<{from: string, to: string, message: string, id: string}>>([])
-  const [allowedContacts, setAllowedContacts] = useState<string[]>([])
-  const [showPermissionDialog, setShowPermissionDialog] = useState(false)
-  const [currentRequest, setCurrentRequest] = useState<{from: string, message: string, id: string} | null>(null)
+  // PeerChatSystem is loaded dynamically
+  const PeerChatSystemRef = useRef<any>(null);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        PeerChatSystemRef.current = require("@/lib/peer-chat").default;
+      } catch (error) {
+        console.warn("Peer chat system not available:", error);
+      }
+    }
+  }, []);
 
-  // Topic state for details pane
+  // State declarations
+  const [user, setUser] = useState<string>("");
+  const [users, setUsers] = useState<string[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState<string>("");
+  const [to, setTo] = useState<string>("all");
+  const [userColor, setUserColor] = useState<string>("");
+  const [onlineUsers, setOnlineUsers] = useState<Array<{ name: string; color: string; email: string; phone: string }>>([]);
+  const [pendingRequests, setPendingRequests] = useState<Array<{ from: string; to: string; message: string; id: string }>>([]);
+  const [allowedContacts, setAllowedContacts] = useState<string[]>([]);
+  const [showPermissionDialog, setShowPermissionDialog] = useState(false);
+  const [currentRequest, setCurrentRequest] = useState<{ from: string; message: string; id: string } | null>(null);
   const [topic, setTopic] = useState("");
   const [showTopicInput, setShowTopicInput] = useState(false);
   const [topicInput, setTopicInput] = useState("");
+  const [phonebook, setPhonebook] = useState<Array<{ id: string; name: string; email: string; phone: string; company: string; joinedAt: string; color?: string }>>([]);
+  const [showUserRegistration, setShowUserRegistration] = useState(false);
+  const [registrationErrors, setRegistrationErrors] = useState<string[]>([]);
+  const [userInfo, setUserInfo] = useState<{ name: string; email: string; phone: string; company: string }>({ name: "", email: "", phone: "", company: "" });
+  const [showAdminLogin, setShowAdminLogin] = useState(false);
+  const [adminPassword, setAdminPassword] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showPhonebook, setShowPhonebook] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+  const [wsConnected, setWsConnected] = useState(false);
+  const chatSystem = useRef<any>(null);
 
-  // Phonebook state
-  const [phonebook, setPhonebook] = useState<Array<{
-    id: string;
-    name: string;
-    email: string;
-    phone: string;
-    company: string;
-    joinedAt: string;
-  }>>([])
-
-  // Load registered users from localStorage
-  useEffect(() => {
-    const registeredUsers = localStorage.getItem('chat-phonebook')
-    if (registeredUsers) {
-      try {
-        setPhonebook(JSON.parse(registeredUsers))
-      } catch {}
-    }
-  }, [])
-
-  // Validation functions
-  const validateName = (name: string): boolean => {
-    // Must be 2-50 characters, only letters, spaces, hyphens, apostrophes
-    const nameRegex = /^[a-zA-Z\s\-']{2,50}$/
-    return nameRegex.test(name.trim())
-  }
-
-  const validateEmail = (email: string): boolean => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    return emailRegex.test(email.trim())
-  }
-
-  const validatePhone = (phone: string): boolean => {
-    // Allow various phone formats
-    const phoneRegex = /^[\+]?[0-9\s\-\(\)]{10,15}$/
-    return phoneRegex.test(phone.trim())
-  }
-
-  const validateUserRegistration = (): boolean => {
-    const errors: string[] = []
-    
-    if (!validateName(userInfo.name)) {
-      errors.push("Name must be 2-50 characters and contain only letters, spaces, hyphens, or apostrophes")
-    }
-    
-    if (!validateEmail(userInfo.email)) {
-      errors.push("Please enter a valid email address")
-    }
-    
-    if (!validatePhone(userInfo.phone)) {
-      errors.push("Please enter a valid phone number")
-    }
-    
-    if (userInfo.company.trim().length < 2) {
-      errors.push("Company/Organization name is required")
-    }
-    
-    // Check if email already exists
-    if (phonebook.some(entry => entry.email.toLowerCase() === userInfo.email.toLowerCase())) {
-      errors.push("This email is already registered")
-    }
-    
-    setRegistrationErrors(errors)
-    return errors.length === 0
-  }
-
-  // Generate a random color for the user
-  const generateUserColor = () => {
-    const colors = [
-      'bg-red-500', 'bg-blue-500', 'bg-green-500', 'bg-yellow-500', 
-      'bg-purple-500', 'bg-pink-500', 'bg-indigo-500', 'bg-teal-500',
-      'bg-orange-500', 'bg-cyan-500', 'bg-lime-500', 'bg-rose-500'
-    ]
-    return colors[Math.floor(Math.random() * colors.length)]
-  }
-
-  const registerUser = () => {
-    if (!validateUserRegistration()) return
-    
-    const assignedColor = generateUserColor()
-    const newUser = {
-      id: Date.now().toString(),
-      name: userInfo.name.trim(),
-      email: userInfo.email.trim().toLowerCase(),
-      phone: userInfo.phone.trim(),
-      company: userInfo.company.trim(),
-      joinedAt: new Date().toISOString(),
-      color: assignedColor
-    }
-    
-    const updatedPhonebook = [...phonebook, newUser]
-    setPhonebook(updatedPhonebook)
-    localStorage.setItem('chat-phonebook', JSON.stringify(updatedPhonebook))
-    localStorage.setItem('chat-username', newUser.name)
-    localStorage.setItem('user-color', assignedColor)
-    
-    setUser(newUser.name)
-    setUserColor(assignedColor)
-    setShowUserRegistration(false)
-    
-    // Initialize peer chat system
-    if (typeof window !== 'undefined' && PeerChatSystem) {
-      try {
-        chatSystem.current = new PeerChatSystem()
-        
-        // Set up event handlers
-        chatSystem.current.onNewMessage = (message: Message) => {
-          setMessages(prev => [...prev, message])
-        }
-        
-        chatSystem.current.onUsersUpdate = (users: any[]) => {
-          setOnlineUsers(users)
-          setUsers(users.map(u => u.name))
-        }
-        
-        chatSystem.current.onPermissionRequest = (from: string, text: string, requestId?: string) => {
-          setCurrentRequest({ from, message: text, id: requestId || Date.now().toString() })
-          setShowPermissionDialog(true)
-        }
-        
-        chatSystem.current.onPermissionGranted = (from: string) => {
-          setAllowedContacts(prev => [...prev, from])
-        }
-        
-        // Join the chat system
-        const onlineUsersList = chatSystem.current.join(newUser.name, assignedColor, newUser.email, newUser.phone)
-        setOnlineUsers(onlineUsersList)
-        setUsers(onlineUsersList.map(u => u.name))
-        
-        // Load existing messages
-        const existingMessages = chatSystem.current.getMessages()
-        setMessages(existingMessages)
-        
-        // Start heartbeat
-        chatSystem.current.startHeartbeat()
-      } catch (error) {
-        console.error('Failed to initialize chat system:', error)
-        // Fallback: just set the user without chat functionality
-        setMessages([{
-          id: Date.now(),
-          text: 'Welcome! Chat functionality is loading...',
-          from: 'System',
-          time: Date.now()
-        }])
-      }
-    } else {
-      console.warn('Chat system not available')
-      setMessages([{
-        id: Date.now(),
-        text: 'Welcome! You can use this interface, but real-time chat is not available.',
-        from: 'System',
-        time: Date.now()
-      }])
-    }
-  }
 
   // Load chat history for this user from localStorage - but always require re-registration
   useEffect(() => {
-    // Clear previous session data to force re-registration
-    localStorage.removeItem('chat-username')
-    localStorage.removeItem('user-color')
-    setShowUserRegistration(true)
-  }, [])
+    localStorage.removeItem("chat-username");
+    localStorage.removeItem("user-color");
+    setShowUserRegistration(true);
+  }, []);
+
 
   // Connect to Peer Chat System
   useEffect(() => {
-    // Cleanup function
     return () => {
       if (chatSystem.current) {
-        chatSystem.current.leave()
-        chatSystem.current = null
+        chatSystem.current.leave();
+        chatSystem.current = null;
       }
-    }
-  }, [user])
+    };
+  }, [user]);
+
 
   useEffect(() => {
-    // Always scroll to bottom on new message, even if not focused
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+
   const handleVoiceTranscript = (transcript: string) => {
-    // Add the voice transcript as a message from the user
     if (chatSystem.current && user) {
-      const success = chatSystem.current.sendMessage(to, `🎤 ${transcript}`)
+      const success = chatSystem.current.sendMessage(to, `🎤 ${transcript}`);
       if (!success) {
-        console.log('Voice message requires permission or failed to send')
+        console.log("Voice message requires permission or failed to send");
       }
     }
-  }
+  };
+
 
   const sendMessage = () => {
-    if (!input.trim()) return
-    if (chatSystem.current) {
+    if (!input.trim()) return;
+    if (wsRef.current && wsConnected) {
       try {
-        const success = chatSystem.current.sendMessage(to, input)
-        if (success) {
-          setInput("")
-        } else {
-          console.log('Message requires permission or failed to send')
-        }
+        wsRef.current.send(
+          JSON.stringify({ type: "message", from: user, to, text: input })
+        );
+        setInput("");
       } catch (error) {
-        console.error('Error sending message:', error)
-        // Fallback: show message locally
+        console.error("WebSocket send error:", error);
         const fallbackMessage: Message = {
           id: Date.now(),
           text: `[Local] ${input}`,
           from: user,
           to: to,
-          time: Date.now()
+          time: Date.now(),
+        };
+        setMessages((prev) => [...prev, fallbackMessage]);
+        setInput("");
+      }
+    } else if (chatSystem.current) {
+      try {
+        const success = chatSystem.current.sendMessage(to, input);
+        if (success) {
+          setInput("");
+        } else {
+          console.log("Message requires permission or failed to send");
         }
-        setMessages(prev => [...prev, fallbackMessage])
-        setInput("")
+      } catch (error) {
+        console.error("Error sending message:", error);
+        const fallbackMessage: Message = {
+          id: Date.now(),
+          text: `[Local] ${input}`,
+          from: user,
+          to: to,
+          time: Date.now(),
+        };
+        setMessages((prev) => [...prev, fallbackMessage]);
+        setInput("");
       }
     } else {
-      // Fallback: show message locally
       const fallbackMessage: Message = {
         id: Date.now(),
         text: `[Local] ${input}`,
         from: user,
         to: to,
-        time: Date.now()
-      }
-      setMessages(prev => [...prev, fallbackMessage])
-      setInput("")
+        time: Date.now(),
+      };
+      setMessages((prev) => [...prev, fallbackMessage]);
+      setInput("");
     }
-  }
+  };
+
+
 
   // Gemini audio reply logic
   const [isGeminiLoading, setIsGeminiLoading] = useState(false);
@@ -305,54 +153,92 @@ export default function ChatPage() {
     if (!input.trim()) return;
     setIsGeminiLoading(true);
     try {
-      // Use fetch to call Gemini API (replace with your endpoint and key)
       const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-      const model = 'models/gemini-2.5-flash-preview-native-audio-dialog';
+      const model = "models/gemini-2.5-flash-preview-native-audio-dialog";
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
       const body = {
-        contents: [{ role: 'user', parts: [{ text: input }]}],
+        contents: [{ role: "user", parts: [{ text: input }] }],
         generationConfig: {
-          responseMimeType: 'audio/wav',
-          responseModality: 'AUDIO',
+          responseMimeType: "audio/wav",
+          responseModality: "AUDIO",
         },
       };
       const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      if (!res.ok) throw new Error('Failed to fetch Gemini audio');
+      if (!res.ok) throw new Error("Failed to fetch Gemini audio");
       const data = await res.json();
-      // Find audio base64 in response
-      const audioBase64 = data?.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
+      const audioBase64 = data?.candidates?.[0]?.content?.parts?.find((p) => p.inlineData)?.inlineData?.data;
       if (audioBase64) {
-        const audioBlob = new Blob([Uint8Array.from(atob(audioBase64), c => c.charCodeAt(0))], { type: 'audio/wav' });
+        const audioBlob = new Blob([Uint8Array.from(atob(audioBase64), (c) => c.charCodeAt(0))], { type: "audio/wav" });
         const audioUrl = URL.createObjectURL(audioBlob);
         const audio = new Audio(audioUrl);
         audio.play();
       } else {
-        alert('No audio reply received.');
+        alert("No audio reply received.");
       }
     } catch (err) {
-      alert('Error with Gemini audio reply.');
+      alert("Error with Gemini audio reply.");
       console.error(err);
     }
     setIsGeminiLoading(false);
-  }
+  };
+
+
 
   const handlePermissionResponse = (granted: boolean) => {
     if (currentRequest && chatSystem.current) {
-      chatSystem.current.handlePermissionResponse(currentRequest.from, granted, currentRequest.id)
-      
+      chatSystem.current.handlePermissionResponse(currentRequest.from, granted, currentRequest.id);
       if (granted) {
-        setAllowedContacts(prev => [...prev, currentRequest.from])
+        setAllowedContacts((prev) => [...prev, currentRequest.from]);
       }
     }
-    
-    setShowPermissionDialog(false)
-    setCurrentRequest(null)
-  }
+    setShowPermissionDialog(false);
+    setCurrentRequest(null);
+  };
 
+
+  // Registration logic
+  const registerUser = () => {
+    const errors: string[] = [];
+    if (!userInfo.name.trim()) errors.push("Name is required");
+    if (!userInfo.email.trim()) errors.push("Email is required");
+    if (!userInfo.phone.trim()) errors.push("Phone number is required");
+    if (!userInfo.company.trim()) errors.push("Company/Organization is required");
+    setRegistrationErrors(errors);
+    if (errors.length > 0) return;
+    // Assign color and set user
+    const colors = [
+      "bg-blue-600",
+      "bg-green-600",
+      "bg-red-600",
+      "bg-yellow-600",
+      "bg-pink-600",
+      "bg-purple-600",
+      "bg-teal-600",
+    ];
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    setUser(userInfo.name);
+    setUserColor(color);
+    setShowUserRegistration(false);
+    // Add to phonebook
+    setPhonebook((prev) => [
+      ...prev,
+      {
+        id: Date.now().toString(),
+        name: userInfo.name,
+        email: userInfo.email,
+        phone: userInfo.phone,
+        company: userInfo.company,
+        joinedAt: new Date().toISOString(),
+        color,
+      },
+    ]);
+  };
+
+  // Registration page (priority)
   if (showUserRegistration) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-black p-4">
@@ -361,7 +247,6 @@ export default function ChatPage() {
           <p className="text-sm text-gray-400 text-center mb-6">
             Please provide your information to start chatting. You'll be assigned a unique color.
           </p>
-          
           <div className="space-y-4">
             <div>
               <label className="text-sm font-medium mb-1 block text-white">Full Name *</label>
@@ -372,7 +257,6 @@ export default function ChatPage() {
                 className={`bg-gray-900 border-gray-700 text-white placeholder:text-gray-500 focus:border-gray-600 ${registrationErrors.some(e => e.includes('Name')) ? 'border-red-500' : ''}`}
               />
             </div>
-            
             <div>
               <label className="text-sm font-medium mb-1 block text-white">Email Address *</label>
               <Input
@@ -383,7 +267,6 @@ export default function ChatPage() {
                 className={`bg-gray-900 border-gray-700 text-white placeholder:text-gray-500 focus:border-gray-600 ${registrationErrors.some(e => e.includes('email')) ? 'border-red-500' : ''}`}
               />
             </div>
-            
             <div>
               <label className="text-sm font-medium mb-1 block text-white">Phone Number *</label>
               <Input
@@ -393,7 +276,6 @@ export default function ChatPage() {
                 className={`bg-gray-900 border-gray-700 text-white placeholder:text-gray-500 focus:border-gray-600 ${registrationErrors.some(e => e.includes('phone')) ? 'border-red-500' : ''}`}
               />
             </div>
-            
             <div>
               <label className="text-sm font-medium mb-1 block text-white">Company/Organization *</label>
               <Input
@@ -403,7 +285,6 @@ export default function ChatPage() {
                 className={`bg-gray-900 border-gray-700 text-white placeholder:text-gray-500 focus:border-gray-600 ${registrationErrors.some(e => e.includes('Company')) ? 'border-red-500' : ''}`}
               />
             </div>
-            
             {registrationErrors.length > 0 && (
               <div className="bg-red-900/20 border border-red-800 rounded-lg p-3">
                 <ul className="text-sm text-red-400 space-y-1">
@@ -413,7 +294,6 @@ export default function ChatPage() {
                 </ul>
               </div>
             )}
-            
             <Button
               onClick={registerUser}
               className="w-full bg-white text-black hover:bg-gray-200"
@@ -424,153 +304,191 @@ export default function ChatPage() {
           </div>
         </div>
       </div>
-    )
+    );
   }
 
+  // Initial chat list page (dark theme) if not registered
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-black">
+        <div className="w-full max-w-md mx-auto rounded-2xl shadow-xl bg-[#18181b]">
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 pt-6 pb-2">
+            <h2 className="text-2xl font-bold text-white">Messages</h2>
+            <Button variant="ghost" size="icon" className="text-gray-400 hover:bg-gray-800">
+              <MoreVertical size={22} />
+            </Button>
+          </div>
+          {/* Search Bar */}  
+          <div className="px-6 pb-2">
+            <div className="relative">
+              <Input
+                type="text"
+                placeholder="Search chats"
+                className="w-full rounded-xl bg-[#232326] border-none text-white placeholder:text-gray-500 py-2 pl-10"
+                // Add search logic if needed
+              />
+              <span className="absolute left-3 top-2.5 text-gray-500">
+                <Search size={18} />
+              </span>
+            </div>
+          </div>
+          {/* Chat List */}
+          <div className="px-2 pb-2">
+            {(users.length === 0 ? [
+              { name: "Robert Fox", last: "Thnx!", time: "4:28 PM", unread: 4, avatar: "/avatar1.png" },
+              { name: "Marvin McKinney", last: "Wheewhoo", time: "1:46 PM", unread: 2, avatar: "/avatar2.png" },
+              { name: "Ralph Edwards", last: "Defenetely", time: "1d", unread: 0, avatar: "/avatar3.png" },
+              { name: "Albert Flores", last: "Thanks. I will reach you", time: "1w", unread: 0, avatar: "/avatar4.png" },
+              { name: "Guy Hawkins", last: "Okay", time: "1m", unread: 0, avatar: "/avatar5.png" },
+            ] : users.map(u => {
+              const lastMsg = messages.filter(m => m.from === u || m.to === u).slice(-1)[0];
+              return {
+                name: u,
+                last: lastMsg?.text || "No messages yet",
+                time: lastMsg?.time ? new Date(lastMsg.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "",
+                unread: 0,
+                avatar: "",
+              };
+            })).map((chat, idx) => (
+              <div key={chat.name + idx} className="flex items-center px-4 py-3 border-b border-[#232326] cursor-pointer hover:bg-[#232326] transition">
+                <Avatar className="w-12 h-12">
+                  {chat.avatar ? (
+                    <AvatarImage src={chat.avatar} alt={chat.name} />
+                  ) : (
+                    <AvatarFallback className="bg-gray-700 text-white font-semibold">
+                      {chat.name.slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+                <div className="ml-3 flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <span className="text-base font-semibold text-white truncate">{chat.name}</span>
+                    <span className="text-xs text-gray-400">{chat.time}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-400 truncate">{chat.last}</span>
+                    {chat.unread > 0 && (
+                      <span className="ml-2 bg-black text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">{chat.unread}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* Floating menu button */}
+          <div className="fixed bottom-8 right-8 z-50">
+            <div className="relative group">
+              <Button className="rounded-full w-14 h-14 bg-white text-black shadow-lg hover:bg-gray-200">
+                <MoreVertical size={28} />
+              </Button>
+              <div className="absolute bottom-16 right-0 bg-[#232326] rounded-xl shadow-lg py-2 px-4 text-white text-sm space-y-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition pointer-events-none group-hover:pointer-events-auto group-focus-within:pointer-events-auto">
+                <div className="cursor-pointer hover:text-blue-400">Chat</div>
+                <div className="cursor-pointer hover:text-blue-400">Contact</div>
+                <div className="cursor-pointer hover:text-blue-400">Group</div>
+                <div className="cursor-pointer hover:text-blue-400">Broadcast</div>
+                <div className="cursor-pointer hover:text-blue-400">Team</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Main chat UI (only one page, no duplicate)
   return (
     <div className="flex h-screen bg-black chat-page">
       {/* Desktop: Side-by-side layout, Mobile: Stacked layout */}
-      
       {/* Left Sidebar - Desktop only */}
       <div className="hidden lg:flex lg:flex-col lg:w-80 xl:w-96 bg-black border-r border-gray-800">
-        {/* Sidebar Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-800">
+        {/* Mobile View - List or Chat */}
+        <div className="lg:hidden flex-1 flex flex-col overflow-y-auto">
+          {to === 'all' ? (
+            <>  {/* User List */}
+              <div className="bg-black border-b border-gray-800 p-4">
+                <h2 className="text-2xl font-bold text-white">Chats</h2>
+              </div>
+              <div className="px-4 py-2">
+                {/* General */}
+                <div
+                  className={`flex items-center p-3 rounded-xl mb-2 cursor-pointer hover:bg-gray-800 text-white`}
+                  onClick={() => setTo('all')}
+                >
+                  <Hash size={20} className="text-white" />
+                  <span className="ml-3 text-sm font-semibold">General</span>
+                </div>
+                {/* Users */}
+                {users.filter(u => u !== user).map(u => (
+                  <div
+                    key={u}
+                    className="flex items-center p-3 rounded-xl mb-2 cursor-pointer hover:bg-gray-800 text-white"
+                    onClick={() => setTo(u)}
+                  >
+                    <Avatar className="w-8 h-8">
+                      <AvatarFallback className={`${onlineUsers.find(o=>o.name===u)?.color || 'bg-gray-500'} text-white font-semibold`}>
+                        {u.slice(0,2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="ml-3 text-sm font-semibold">{u}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <>  {/* Chat View */}
+              <div className="bg-black border-b border-gray-800 flex items-center p-4">
+                <Button variant="ghost" className="text-white mr-4" onClick={() => setTo('all')}>
+                  <ArrowLeft size={20} />
+                </Button>
+                <h2 className="text-lg font-semibold text-white">{to}</h2>
+              </div>
+              <div className="flex-1 p-4 space-y-4 overflow-y-auto chat-messages">
+                {messages.filter(m=> (m.to==='all'? m.to==='all': (m.from===user&&m.to===to)||(m.from===to&&m.to===user))).map(msg=> (
+                  <div key={msg.id} className="flex items-start space-x-2">
+                    <Avatar className="w-8 h-8 flex-shrink-0">
+                      <AvatarFallback className={`${msg.from===user?userColor:onlineUsers.find(o=>o.name===msg.from)?.color||'bg-gray-500'} text-white font-semibold`}>
+                        {(msg.from===user?'You':msg.from).slice(0,2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="bg-gray-800 p-3 rounded-lg">
+                      <p className="text-sm text-white">{msg.text}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+        {/* Desktop Chat Header (only visible on desktop) */}
+        <div className="hidden lg:flex bg-black border-b border-gray-800 px-6 py-4">
           <div className="flex items-center space-x-3">
-            <Avatar className="w-10 h-10">
-              <AvatarFallback className={`${userColor} text-white font-semibold`}>
-                {user.slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <h1 className="text-lg font-semibold text-white">{user}</h1>
-              <p className="text-sm text-gray-400">● Online</p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-1">
-            {isAdmin && (
-              <Button size="sm" variant="ghost" onClick={() => setShowPhonebook(true)} className="text-white hover:bg-gray-800">
-                <Phone size={16} />
-              </Button>
-            )}
-            <Button size="sm" variant="ghost" onClick={() => setShowAdminLogin(true)} className="text-white hover:bg-gray-800">
-              <UserCog size={16} />
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => {
-              setUser("");
-              setIsAdmin(false);
-              localStorage.removeItem('chat-username');
-              localStorage.removeItem('user-color');
-              window.location.href = "/";
-            }} className="text-white hover:bg-gray-800">
-              <X size={16} />
-            </Button>
-          </div>
-        </div>
-
-        {/* Chat Title */}
-        <div className="p-4">
-          <h2 className="text-2xl font-bold mb-4 text-white">Chats</h2>
-        </div>
-
-        {/* Search */}
-        <div className="px-4 pb-4">
-          <div className="relative">
-            <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <Input placeholder="Search conversations" className="pl-10 bg-gray-900 border-gray-700 text-white placeholder:text-gray-500" />
-          </div>
-        </div>
-
-        {/* Chat List */}
-        <div className="flex-1 overflow-y-auto px-4 pb-4">
-          {/* General Channel */}
-          <div 
-            className={`flex items-center p-3 rounded-xl cursor-pointer mb-2 transition-all duration-200 ${
-              to === 'all' 
-                ? 'bg-white text-black' 
-                : 'hover:bg-gray-800 text-white'
-            }`}
-            onClick={() => setTo('all')}
-          >
-            <div className="relative">
-              <div className="w-12 h-12 bg-gray-600 rounded-full flex items-center justify-center">
+            {to === 'all' ? (
+              <div className="w-10 h-10 bg-gray-600 rounded-full flex items-center justify-center">
                 <Hash size={20} className="text-white" />
               </div>
-            </div>
-            <div className="ml-3 flex-1 min-w-0">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold">General</p>
-                <span className="text-xs opacity-60">
-                  {messages.filter(m => m.to === 'all' || !m.to).length > 0 && 
-                    new Date(Math.max(...messages.filter(m => m.to === 'all' || !m.to).map(m => m.time || 0))).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                  }
-                </span>
-              </div>
-              <p className="text-xs opacity-60 truncate">
-                {messages.filter(m => m.to === 'all' || !m.to).length > 0 
-                  ? messages.filter(m => m.to === 'all' || !m.to).slice(-1)[0].text
-                  : 'No messages yet'
-                }
+            ) : (
+              <Avatar className="w-10 h-10">
+                {to === "Admin" ? (
+                  <AvatarImage src="/kamogelo-photo.jpg" alt="Admin" />
+                ) : (
+                  <AvatarFallback className={`${onlineUsers.find(u => u.name === to)?.color || 'bg-gray-500'} text-white font-semibold`}>
+                    {to.slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                )}
+              </Avatar>
+            )}
+            <div>
+              <h2 className="text-lg font-semibold text-white">
+                {to === 'all' ? 'General' : to}
+              </h2>
+              <p className="text-sm text-gray-400">
+                {to === 'all' ? `${users.length + 1} members` : 'Active now'}
               </p>
             </div>
           </div>
-
-          {/* Online Users Section */}
-          <div className="mt-6 mb-3">
-            <span className="text-xs font-medium text-gray-400">Online Users</span>
-          </div>
-
-          {/* Individual Users */}
-          {users.filter(u => u !== user).map(u => {
-            const userMessages = messages.filter(m => 
-              (m.from === user && m.to === u) || (m.from === u && m.to === user)
-            );
-            const lastMessage = userMessages.slice(-1)[0];
-            const onlineUser = onlineUsers.find(ou => ou.name === u);
-            
-            return (
-              <div 
-                key={u}
-                className={`flex items-center p-3 rounded-xl cursor-pointer mb-2 transition-all duration-200 ${
-                  to === u 
-                    ? 'bg-white text-black' 
-                    : 'hover:bg-gray-800 text-white'
-                }`}
-                onClick={() => setTo(u)}
-              >
-                <div className="relative">
-                  <Avatar className="w-12 h-12">
-                    {u === "Admin" ? (
-                      <AvatarImage src="/kamogelo-photo.jpg" alt="Admin" />
-                    ) : (
-                      <AvatarFallback className={`${onlineUser?.color || 'bg-gray-500'} text-white font-semibold`}>
-                        {u.slice(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    )}
-                  </Avatar>
-                  <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-black rounded-full"></div>
-                </div>
-                <div className="ml-3 flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold">{u}</p>
-                    {!allowedContacts.includes(u) && u !== 'Admin' && (
-                      <Badge variant="outline" className="text-xs border-gray-400">
-                        Request access
-                      </Badge>
-                    )}
-                    <span className="text-xs opacity-60">
-                      {lastMessage && new Date(lastMessage.time || 0).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
-                  <p className="text-xs opacity-60 truncate">
-                    {lastMessage ? lastMessage.text : 'Start a conversation'}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
         </div>
       </div>
-
       {/* Main Chat Area - Full width on mobile, alongside sidebar on desktop */}
       <div className="flex-1 flex flex-col min-h-0">
         {/* Mobile Header (only visible on mobile) */}
@@ -722,109 +640,7 @@ export default function ChatPage() {
             </div>
           </div>
         </div>
-      {showAdminLogin && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-          <div className="bg-black rounded-lg shadow-xl p-6 w-full max-w-xs flex flex-col gap-4 border border-gray-800">
-            <h2 className="text-lg font-bold text-center text-white">Admin Login</h2>
-            <Input
-              type="password"
-              placeholder="Enter admin password"
-              value={adminPassword}
-              onChange={e => setAdminPassword(e.target.value)}
-              className="bg-gray-900 border-gray-700 text-white placeholder:text-gray-500"
-              autoFocus
-            />
-            <div className="flex gap-2">
-              <Button
-                className="flex-1 bg-white text-black hover:bg-gray-200"
-                onClick={() => {
-                  if (adminPassword === "2255") {
-                    setIsAdmin(true);
-                    setShowAdminLogin(false);
-                    setUser("Admin");
-                    setUserColor("bg-purple-600");
-                    setShowUserRegistration(false);
-                  }
-                }}
-              >Login</Button>
-              <Button 
-                variant="outline" 
-                className="flex-1 border-gray-600 text-white hover:bg-gray-800" 
-                onClick={() => setShowAdminLogin(false)}
-              >
-                Cancel
-              </Button>
-            </div>
-            {adminPassword && adminPassword !== "2255" && (
-              <span className="text-xs text-red-400 text-center">Incorrect password</span>
-            )}
-          </div>
-        </div>
-      )}
-      
-      {/* Phonebook Modal */}
-      {showPhonebook && isAdmin && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-black rounded-lg shadow-xl w-full max-w-4xl max-h-[80vh] overflow-hidden border border-gray-800">
-            <div className="flex items-center justify-between p-4 border-b border-gray-800">
-              <h2 className="text-lg font-bold text-white">User Phonebook</h2>
-              <Button variant="ghost" size="sm" onClick={() => setShowPhonebook(false)} className="text-white hover:bg-gray-800">
-                <X size={16} />
-              </Button>
-            </div>
-            
-            <div className="overflow-y-auto max-h-[calc(80vh-120px)] p-4">
-              {phonebook.length === 0 ? (
-                <div className="text-center text-gray-400 py-8">
-                  <p>No registered users yet.</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {phonebook.map((entry) => (
-                    <div key={entry.id} className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <h3 className="font-semibold text-lg text-white">{entry.name}</h3>
-                          <p className="text-sm text-gray-400">{entry.company}</p>
-                        </div>
-                        <div className="space-y-2 text-sm">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-white">Email:</span>
-                            <a href={`mailto:${entry.email}`} className="text-gray-400 hover:underline">
-                              {entry.email}
-                            </a>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-white">Phone:</span>
-                            <a href={`tel:${entry.phone}`} className="text-gray-400 hover:underline">
-                              {entry.phone}
-                            </a>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-white">Joined:</span>
-                            <span className="text-gray-400">
-                              {new Date(entry.joinedAt).toLocaleDateString()}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            
-            <div className="border-t border-gray-800 p-4">
-              <div className="flex justify-between items-center text-sm text-gray-400">
-                <span>Total registered users: {phonebook.length}</span>
-                <Button variant="outline" onClick={() => setShowPhonebook(false)} className="border-gray-600 text-white hover:bg-gray-800">
-                  Close
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+
         {/* Messages Area - Hidden on mobile, visible on desktop */}
         <div className="hidden lg:flex lg:flex-col lg:flex-1 lg:min-h-0 bg-black">
           <div className="flex-1 overflow-y-auto p-6 space-y-6 chat-messages" style={{ overscrollBehavior: 'contain' }}>
@@ -877,9 +693,9 @@ export default function ChatPage() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Desktop Message Input */}
-          <div className="border-t border-gray-800 bg-black p-6">
-            <form onSubmit={e => { e.preventDefault(); sendMessage(); }} className="flex items-end space-x-4">
+          {/* Message Input - Desktop & Mobile */}
+          <div className="border-t border-gray-800 bg-black p-4 lg:p-6 fixed lg:static bottom-0 left-0 right-0 z-40">
+            <form onSubmit={e => { e.preventDefault(); sendMessage(); }} className="flex items-end space-x-2 lg:space-x-4">
               {/* Gemini Audio Button on the left */}
               <Button
                 type="button"
@@ -897,12 +713,12 @@ export default function ChatPage() {
                 )}
               </Button>
               {isAdmin && (
-                <Avatar className="w-10 h-10 flex-shrink-0">
+                <Avatar className="w-10 h-10 flex-shrink-0 hidden lg:block">
                   <AvatarImage src="/kamogelo-photo.jpg" alt="Admin" />
                 </Avatar>
               )}
               <div className="flex-1 relative">
-                <div className="bg-gray-800 rounded-2xl border border-gray-700 p-4">
+                <div className="bg-gray-800 rounded-2xl border border-gray-700 p-2 lg:p-4 flex items-center">
                   <Input
                     type="text"
                     value={input}
@@ -911,51 +727,20 @@ export default function ChatPage() {
                     className="border-0 bg-transparent p-0 text-base placeholder:text-gray-400 focus-visible:ring-0 focus-visible:ring-offset-0 text-white"
                     style={{ fontSize: 16 }}
                   />
-                  <div className="flex items-center justify-between mt-3">
-                    <div className="flex items-center space-x-2">
-                      <Button type="button" size="sm" variant="ghost" className="h-8 w-8 p-0 rounded-full hover:bg-gray-600">
-                        <Paperclip size={16} className="text-gray-400" />
-                      </Button>
-                      <Button type="button" size="sm" variant="ghost" className="h-8 w-8 p-0 rounded-full hover:bg-gray-600">
-                        <Smile size={16} className="text-gray-400" />
-                      </Button>
-                    </div>
-                    <Button 
-                      type="submit" 
-                      disabled={!input.trim()} 
-                      size="sm" 
-                      className="h-9 px-4 rounded-full bg-white hover:bg-gray-200 disabled:opacity-50 text-black font-medium"
-                    >
-                      Send
-                    </Button>
-                  </div>
+                  <Button 
+                    type="submit" 
+                    disabled={!input.trim()} 
+                    size="sm" 
+                    className="ml-2 h-9 px-4 rounded-full bg-white hover:bg-gray-200 disabled:opacity-50 text-black font-medium"
+                  >
+                    Send
+                  </Button>
                 </div>
               </div>
             </form>
           </div>
         </div>
 
-        {/* Mobile Bottom Navigation */}
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-black border-t border-gray-800 px-4 py-2 safe-area-pb">
-          <div className="flex items-center justify-around">
-            <Button variant="ghost" size="sm" className="flex flex-col items-center space-y-1 h-auto py-2">
-              <MessageCircle size={20} className="text-white" />
-              <span className="text-xs text-white font-medium">Chats</span>
-            </Button>
-            <Button variant="ghost" size="sm" className="flex flex-col items-center space-y-1 h-auto py-2">
-              <Users size={20} className="text-gray-400" />
-              <span className="text-xs text-gray-400">People</span>
-            </Button>
-            <Button variant="ghost" size="sm" className="flex flex-col items-center space-y-1 h-auto py-2">
-              <Phone size={20} className="text-gray-400" />
-              <span className="text-xs text-gray-400">Calls</span>
-            </Button>
-            <Button variant="ghost" size="sm" className="flex flex-col items-center space-y-1 h-auto py-2">
-              <Settings size={20} className="text-gray-400" />
-              <span className="text-xs text-gray-400">Settings</span>
-            </Button>
-          </div>
-        </div>
       </div>
       
       {/* Floating Voice Assistant */}
@@ -999,5 +784,6 @@ export default function ChatPage() {
         </div>
       )}
     </div>
-  )
+  );
 }
+            

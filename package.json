@@ -19,7 +19,7 @@
   "scripts": {
     "dev": "next dev",
     "dev:pnpm": "pnpm dev",
-    "build": "next build && cp CNAME out/CNAME",
+    "build": "next build && copy CNAME out\\CNAME",
     "start": "next start",
     "lint": "next lint",
     "predeploy": "npm run build",
