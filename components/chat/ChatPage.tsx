@@ -44,6 +44,16 @@ export default function ChatPage() {
   const [nameInput, setNameInput] = useState("")
   const ws = useRef<WebSocket | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  
+  // User color assignment
+  const [userColor, setUserColor] = useState<string>("")
+  const [onlineUsers, setOnlineUsers] = useState<Array<{name: string, color: string, email: string, phone: string}>>([])
+  
+  // Message permissions
+  const [pendingRequests, setPendingRequests] = useState<Array<{from: string, to: string, message: string, id: string}>>([])
+  const [allowedContacts, setAllowedContacts] = useState<string[]>([])
+  const [showPermissionDialog, setShowPermissionDialog] = useState(false)
+  const [currentRequest, setCurrentRequest] = useState<{from: string, message: string, id: string} | null>(null)
 
   // Topic state for details pane
   const [topic, setTopic] = useState("");
@@ -116,40 +126,47 @@ export default function ChatPage() {
     return errors.length === 0
   }
 
+  // Generate a random color for the user
+  const generateUserColor = () => {
+    const colors = [
+      'bg-red-500', 'bg-blue-500', 'bg-green-500', 'bg-yellow-500', 
+      'bg-purple-500', 'bg-pink-500', 'bg-indigo-500', 'bg-teal-500',
+      'bg-orange-500', 'bg-cyan-500', 'bg-lime-500', 'bg-rose-500'
+    ]
+    return colors[Math.floor(Math.random() * colors.length)]
+  }
+
   const registerUser = () => {
     if (!validateUserRegistration()) return
     
+    const assignedColor = generateUserColor()
     const newUser = {
       id: Date.now().toString(),
       name: userInfo.name.trim(),
       email: userInfo.email.trim().toLowerCase(),
       phone: userInfo.phone.trim(),
       company: userInfo.company.trim(),
-      joinedAt: new Date().toISOString()
+      joinedAt: new Date().toISOString(),
+      color: assignedColor
     }
     
     const updatedPhonebook = [...phonebook, newUser]
     setPhonebook(updatedPhonebook)
     localStorage.setItem('chat-phonebook', JSON.stringify(updatedPhonebook))
     localStorage.setItem('chat-username', newUser.name)
+    localStorage.setItem('user-color', assignedColor)
     
     setUser(newUser.name)
+    setUserColor(assignedColor)
     setShowUserRegistration(false)
   }
 
-  // Load chat history for this user from localStorage
+  // Load chat history for this user from localStorage - but always require re-registration
   useEffect(() => {
-    const saved = localStorage.getItem('chat-username') || ''
-    if (saved) {
-      setUser(saved)
-      setShowUserRegistration(false)
-      const chatHistory = localStorage.getItem(`chat-history-${saved}`)
-      if (chatHistory) {
-        try {
-          setMessages(JSON.parse(chatHistory))
-        } catch {}
-      }
-    }
+    // Clear previous session data to force re-registration
+    localStorage.removeItem('chat-username')
+    localStorage.removeItem('user-color')
+    setShowUserRegistration(true)
   }, [])
 
   // Connect to WebSocket server
@@ -157,13 +174,24 @@ export default function ChatPage() {
     if (!user) return
     ws.current = new window.WebSocket('ws://localhost:3002')
     ws.current.onopen = () => {
-      ws.current?.send(JSON.stringify({ type: 'join', user }))
+      ws.current?.send(JSON.stringify({ type: 'join', user, color: userColor }))
     }
     ws.current.onmessage = (event) => {
       const data = JSON.parse(event.data)
       if (data.type === 'users') {
         setUsers(data.users)
+        setOnlineUsers(data.usersWithDetails || [])
       } else if (data.type === 'message') {
+        // Check if user is allowed to receive messages from sender
+        if (data.to !== 'all' && data.to === user && !allowedContacts.includes(data.from)) {
+          // Show permission request
+          const requestId = Date.now().toString()
+          setCurrentRequest({ from: data.from, message: data.text, id: requestId })
+          setShowPermissionDialog(true)
+          setPendingRequests(prev => [...prev, { ...data, id: requestId }])
+          return
+        }
+        
         setMessages(prev => {
           const updated = [...prev, {
             id: data.time || Date.now(),
@@ -176,21 +204,29 @@ export default function ChatPage() {
           localStorage.setItem(`chat-history-${user}`, JSON.stringify(updated))
           return updated
         })
-// Utility to generate a persistent device ID (works on GitHub Pages, Vercel, etc.)
-function getDeviceId() {
-  let id = localStorage.getItem('deviceId');
-  if (!id) {
-    id = 'dev-' + Math.random().toString(36).substr(2, 9) + Date.now();
-    localStorage.setItem('deviceId', id);
-  }
-  return id;
-}
+      } else if (data.type === 'permission-granted') {
+        // Handle permission granted, allow pending message
+        const pendingMsg = pendingRequests.find(req => req.id === data.requestId)
+        if (pendingMsg) {
+          setMessages(prev => {
+            const updated = [...prev, {
+              id: Date.now(),
+              text: pendingMsg.message,
+              from: pendingMsg.from,
+              to: pendingMsg.to,
+              time: Date.now(),
+            }];
+            localStorage.setItem(`chat-history-${user}`, JSON.stringify(updated))
+            return updated
+          })
+          setPendingRequests(prev => prev.filter(req => req.id !== data.requestId))
+        }
       }
     }
     return () => {
       ws.current?.close()
     }
-  }, [user])
+  }, [user, userColor, allowedContacts])
 
   useEffect(() => {
     // Always scroll to bottom on new message, even if not focused
@@ -211,63 +247,98 @@ function getDeviceId() {
 
   const sendMessage = () => {
     if (!input.trim() || !ws.current) return
-    ws.current.send(JSON.stringify({
-      type: 'message',
-      from: user,
-      to,
-      text: input,
-    }))
+    
+    // Check if sending to specific user who hasn't granted permission
+    if (to !== 'all' && !allowedContacts.includes(to) && to !== 'Admin') {
+      // Send permission request first
+      ws.current.send(JSON.stringify({
+        type: 'permission-request',
+        from: user,
+        to,
+        text: input,
+      }))
+    } else {
+      // Send message normally
+      ws.current.send(JSON.stringify({
+        type: 'message',
+        from: user,
+        to,
+        text: input,
+      }))
+    }
     setInput("")
+  }
+
+  const handlePermissionResponse = (granted: boolean) => {
+    if (currentRequest && granted) {
+      const updatedContacts = [...allowedContacts, currentRequest.from]
+      setAllowedContacts(updatedContacts)
+      localStorage.setItem(`allowed-contacts-${user}`, JSON.stringify(updatedContacts))
+      
+      // Send permission granted message back
+      ws.current?.send(JSON.stringify({
+        type: 'permission-granted',
+        from: user,
+        to: currentRequest.from,
+        requestId: currentRequest.id
+      }))
+    } else if (currentRequest) {
+      // Remove pending request
+      setPendingRequests(prev => prev.filter(req => req.id !== currentRequest.id))
+    }
+    
+    setShowPermissionDialog(false)
+    setCurrentRequest(null)
   }
 
   if (showUserRegistration) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-background p-4">
-        <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-xl p-6 w-full max-w-md border border-border">
-          <h2 className="text-xl font-semibold text-center mb-6">Join the Chat</h2>
-          <p className="text-sm text-muted-foreground text-center mb-6">
-            Please provide your information to start chatting with Kamogelo
+      <div className="flex items-center justify-center min-h-screen bg-white dark:bg-black p-4">
+        <div className="bg-gray-50 dark:bg-gray-900 rounded-lg shadow-xl p-6 w-full max-w-md border border-gray-200 dark:border-gray-800">
+          <h2 className="text-xl font-semibold text-center mb-2 text-black dark:text-white">Join the Chat</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 text-center mb-6">
+            Please provide your information to start chatting. You'll be assigned a unique color.
           </p>
           
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium mb-1 block">Full Name *</label>
+              <label className="text-sm font-medium mb-1 block text-black dark:text-white">Full Name *</label>
               <Input
                 placeholder="John Doe"
                 value={userInfo.name}
                 onChange={e => setUserInfo(prev => ({ ...prev, name: e.target.value }))}
-                className={registrationErrors.some(e => e.includes('Name')) ? 'border-red-500' : ''}
+                className={`bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-black dark:text-white ${registrationErrors.some(e => e.includes('Name')) ? 'border-red-500' : ''}`}
               />
             </div>
             
             <div>
-              <label className="text-sm font-medium mb-1 block">Email Address *</label>
+              <label className="text-sm font-medium mb-1 block text-black dark:text-white">Email Address *</label>
               <Input
                 type="email"
                 placeholder="john@example.com"
                 value={userInfo.email}
                 onChange={e => setUserInfo(prev => ({ ...prev, email: e.target.value }))}
-                className={registrationErrors.some(e => e.includes('email')) ? 'border-red-500' : ''}
+                className={`bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-black dark:text-white ${registrationErrors.some(e => e.includes('email')) ? 'border-red-500' : ''}`}
               />
             </div>
             
             <div>
-              <label className="text-sm font-medium mb-1 block">Phone Number *</label>
+              <label className="text-sm font-medium mb-1 block text-black dark:text-white">Phone Number *</label>
               <Input
                 placeholder="+1 (555) 123-4567"
                 value={userInfo.phone}
                 onChange={e => setUserInfo(prev => ({ ...prev, phone: e.target.value }))}
-                className={registrationErrors.some(e => e.includes('phone')) ? 'border-red-500' : ''}
+                className={`bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-black dark:text-white ${registrationErrors.some(e => e.includes('phone')) ? 'border-red-500' : ''}`}
               />
             </div>
             
             <div>
-              <label className="text-sm font-medium mb-1 block">Company/Organization *</label>
+              <label className="text-sm font-medium mb-1 block text-black dark:text-white">Company/Organization *</label>
               <Input
                 placeholder="Acme Corp"
                 value={userInfo.company}
                 onChange={e => setUserInfo(prev => ({ ...prev, company: e.target.value }))}
-                className={registrationErrors.some(e => e.includes('Company')) ? 'border-red-500' : ''}
+                className={`bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-black dark:text-white ${registrationErrors.some(e => e.includes('Company')) ? 'border-red-500' : ''}`}
               />
             </div>
             
@@ -283,7 +354,7 @@ function getDeviceId() {
             
             <Button
               onClick={registerUser}
-              className="w-full"
+              className="w-full bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200"
               disabled={!userInfo.name || !userInfo.email || !userInfo.phone || !userInfo.company}
             >
               Start Chatting
@@ -295,108 +366,84 @@ function getDeviceId() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="flex h-screen bg-white dark:bg-black">
       {/* Desktop: Side-by-side layout, Mobile: Stacked layout */}
       
       {/* Left Sidebar - Desktop only */}
-      <div className="hidden lg:flex lg:flex-col lg:w-80 xl:w-96 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
+      <div className="hidden lg:flex lg:flex-col lg:w-80 xl:w-96 bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800">
         {/* Sidebar Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800">
           <div className="flex items-center space-x-3">
             <Avatar className="w-10 h-10">
-              <AvatarFallback className="bg-gradient-to-br from-purple-500 to-blue-600 text-white font-semibold">
+              <AvatarFallback className={`${userColor} text-white font-semibold`}>
                 {user.slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div>
-              <h1 className="text-lg font-semibold">{user}</h1>
-              <p className="text-sm text-green-600 dark:text-green-400">● Online</p>
+              <h1 className="text-lg font-semibold text-black dark:text-white">{user}</h1>
+              <p className="text-sm text-gray-600 dark:text-gray-400">● Online</p>
             </div>
           </div>
           <div className="flex items-center space-x-1">
             {isAdmin && (
-              <Button size="sm" variant="ghost" onClick={() => setShowPhonebook(true)}>
+              <Button size="sm" variant="ghost" onClick={() => setShowPhonebook(true)} className="text-black dark:text-white">
                 <Phone size={16} />
               </Button>
             )}
-            <Button size="sm" variant="ghost" onClick={() => setShowAdminLogin(true)}>
+            <Button size="sm" variant="ghost" onClick={() => setShowAdminLogin(true)} className="text-black dark:text-white">
               <UserCog size={16} />
             </Button>
             <Button size="sm" variant="ghost" onClick={() => {
               setUser("");
               setIsAdmin(false);
               localStorage.removeItem('chat-username');
+              localStorage.removeItem('user-color');
               window.location.href = "/";
-            }}>
+            }} className="text-black dark:text-white">
               <X size={16} />
             </Button>
           </div>
         </div>
 
-        {/* Chat Categories */}
+        {/* Chat Title */}
         <div className="p-4">
-          <h2 className="text-2xl font-bold mb-4">Chat</h2>
-          <div className="flex space-x-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
-            <button className="flex-1 py-2 px-3 text-sm font-medium bg-white dark:bg-gray-600 text-gray-900 dark:text-white rounded-md shadow-sm">
-              All
-            </button>
-            <button className="flex-1 py-2 px-3 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
-              Work
-            </button>
-            <button className="flex-1 py-2 px-3 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
-              Personal
-            </button>
-          </div>
+          <h2 className="text-2xl font-bold mb-4 text-black dark:text-white">Chats</h2>
         </div>
 
         {/* Search */}
         <div className="px-4 pb-4">
           <div className="relative">
             <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <Input placeholder="Search conversations" className="pl-10 bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600" />
-          </div>
-        </div>
-
-        {/* Pinned Section */}
-        <div className="px-4 pb-2">
-          <div className="flex items-center text-xs font-medium text-gray-500 dark:text-gray-400 mb-3">
-            <span>📌 Pinned</span>
+            <Input placeholder="Search conversations" className="pl-10 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 text-black dark:text-white" />
           </div>
         </div>
 
         {/* Chat List */}
         <div className="flex-1 overflow-y-auto px-4 pb-4">
-          {/* General Channel - Pinned */}
+          {/* General Channel */}
           <div 
             className={`flex items-center p-3 rounded-xl cursor-pointer mb-2 transition-all duration-200 ${
               to === 'all' 
-                ? 'bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700' 
-                : 'hover:bg-gray-50 dark:hover:bg-gray-700'
+                ? 'bg-black dark:bg-white text-white dark:text-black' 
+                : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-black dark:text-white'
             }`}
             onClick={() => setTo('all')}
           >
             <div className="relative">
-              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-600 rounded-full flex items-center justify-center">
-                <Hash size={20} className="text-white" />
+              <div className="w-12 h-12 bg-gray-600 dark:bg-gray-400 rounded-full flex items-center justify-center">
+                <Hash size={20} className="text-white dark:text-black" />
               </div>
-              {to === 'all' && messages.filter(m => m.to === 'all' || !m.to).length > 0 && (
-                <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
-                  <span className="text-xs text-white font-bold">
-                    {messages.filter(m => m.to === 'all' || !m.to).length}
-                  </span>
-                </div>
-              )}
             </div>
             <div className="ml-3 flex-1 min-w-0">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-gray-900 dark:text-white">General</p>
-                <span className="text-xs text-gray-500 dark:text-gray-400">
+                <p className="text-sm font-semibold">General</p>
+                <span className="text-xs opacity-60">
                   {messages.filter(m => m.to === 'all' || !m.to).length > 0 && 
                     new Date(Math.max(...messages.filter(m => m.to === 'all' || !m.to).map(m => m.time || 0))).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                   }
                 </span>
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+              <p className="text-xs opacity-60 truncate">
                 {messages.filter(m => m.to === 'all' || !m.to).length > 0 
                   ? messages.filter(m => m.to === 'all' || !m.to).slice(-1)[0].text
                   : 'No messages yet'
@@ -405,9 +452,9 @@ function getDeviceId() {
             </div>
           </div>
 
-          {/* Conversations Section */}
+          {/* Online Users Section */}
           <div className="mt-6 mb-3">
-            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Conversations</span>
+            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Online Users</span>
           </div>
 
           {/* Individual Users */}
@@ -416,14 +463,15 @@ function getDeviceId() {
               (m.from === user && m.to === u) || (m.from === u && m.to === user)
             );
             const lastMessage = userMessages.slice(-1)[0];
+            const onlineUser = onlineUsers.find(ou => ou.name === u);
             
             return (
               <div 
                 key={u}
                 className={`flex items-center p-3 rounded-xl cursor-pointer mb-2 transition-all duration-200 ${
                   to === u 
-                    ? 'bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700' 
-                    : 'hover:bg-gray-50 dark:hover:bg-gray-700'
+                    ? 'bg-black dark:bg-white text-white dark:text-black' 
+                    : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-black dark:text-white'
                 }`}
                 onClick={() => setTo(u)}
               >
@@ -432,26 +480,26 @@ function getDeviceId() {
                     {u === "Admin" ? (
                       <AvatarImage src="/kamogelo-photo.jpg" alt="Admin" />
                     ) : (
-                      <AvatarFallback className="bg-gradient-to-br from-green-500 to-blue-500 text-white font-semibold">
+                      <AvatarFallback className={`${onlineUser?.color || 'bg-gray-500'} text-white font-semibold`}>
                         {u.slice(0, 2).toUpperCase()}
                       </AvatarFallback>
                     )}
                   </Avatar>
-                  <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-white dark:border-gray-800 rounded-full"></div>
-                  {userMessages.length > 0 && (
-                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
-                      <span className="text-xs text-white font-bold">{userMessages.length}</span>
-                    </div>
-                  )}
+                  <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-white dark:border-black rounded-full"></div>
                 </div>
                 <div className="ml-3 flex-1 min-w-0">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-gray-900 dark:text-white">{u}</p>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                    <p className="text-sm font-semibold">{u}</p>
+                    {!allowedContacts.includes(u) && u !== 'Admin' && (
+                      <Badge variant="outline" className="text-xs border-gray-400">
+                        Request access
+                      </Badge>
+                    )}
+                    <span className="text-xs opacity-60">
                       {lastMessage && new Date(lastMessage.time || 0).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                  <p className="text-xs opacity-60 truncate">
                     {lastMessage ? lastMessage.text : 'Start a conversation'}
                   </p>
                 </div>
@@ -464,142 +512,146 @@ function getDeviceId() {
       {/* Main Chat Area - Full width on mobile, alongside sidebar on desktop */}
       <div className="flex-1 flex flex-col min-h-0">
         {/* Mobile Header (only visible on mobile) */}
-        <div className="lg:hidden bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <div className="lg:hidden bg-white dark:bg-black border-b border-gray-200 dark:border-gray-800">
           {/* Mobile Top Bar */}
           <div className="flex items-center justify-between p-4">
             <div className="flex items-center space-x-3">
               <Avatar className="w-10 h-10">
-                <AvatarFallback className="bg-gradient-to-br from-purple-500 to-blue-600 text-white font-semibold">
+                <AvatarFallback className={`${userColor} text-white font-semibold`}>
                   {user.slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <h1 className="text-lg font-semibold">{user}</h1>
-                <p className="text-sm text-green-600 dark:text-green-400">● At work</p>
+                <h1 className="text-lg font-semibold text-black dark:text-white">{user}</h1>
+                <p className="text-sm text-gray-600 dark:text-gray-400">● Online</p>
               </div>
             </div>
             <div className="flex items-center space-x-1">
-              <Button size="sm" variant="ghost">
+              <Button size="sm" variant="ghost" className="text-black dark:text-white">
                 <Search size={18} />
               </Button>
-              <Button size="sm" variant="ghost">
+              <Button size="sm" variant="ghost" className="text-black dark:text-white">
                 <MoreVertical size={18} />
               </Button>
             </div>
           </div>
 
           {/* Mobile Chat Title */}
-          <div className="px-4 pb-2">
-            <h2 className="text-2xl font-bold mb-3">Chat</h2>
-            <div className="flex space-x-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
-              <button className="flex-1 py-2 px-3 text-sm font-medium bg-white dark:bg-gray-600 text-gray-900 dark:text-white rounded-md shadow-sm">
-                All
-              </button>
-              <button className="flex-1 py-2 px-3 text-sm font-medium text-gray-500 dark:text-gray-400">
-                Work
-              </button>
-              <button className="flex-1 py-2 px-3 text-sm font-medium text-gray-500 dark:text-gray-400">
-                Personal
-              </button>
-              <button className="flex-1 py-2 px-3 text-sm font-medium text-gray-500 dark:text-gray-400">
-                Archive
-              </button>
-            </div>
+          <div className="px-4 pb-4">
+            <h2 className="text-2xl font-bold mb-4 text-black dark:text-white">Chats</h2>
           </div>
 
           {/* Mobile Chat List */}
           <div className="px-4 pb-4">
-            {/* Pinned Section */}
-            <div className="flex items-center text-xs font-medium text-gray-500 dark:text-gray-400 mb-3">
-              <span>📌 Pinned</span>
-            </div>
-
             {/* General Channel */}
             <div 
               className={`flex items-center p-3 rounded-xl cursor-pointer mb-3 ${
                 to === 'all' 
-                  ? 'bg-blue-50 dark:bg-blue-900/30' 
-                  : 'hover:bg-gray-50 dark:hover:bg-gray-700'
+                  ? 'bg-black dark:bg-white text-white dark:text-black' 
+                  : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-black dark:text-white'
               }`}
               onClick={() => setTo('all')}
             >
               <div className="relative">
-                <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-orange-500 rounded-full flex items-center justify-center">
-                  <Hash size={20} className="text-white" />
-                </div>
-                <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
-                  <span className="text-xs text-white font-bold">3</span>
+                <div className="w-12 h-12 bg-gray-600 dark:bg-gray-400 rounded-full flex items-center justify-center">
+                  <Hash size={20} className="text-white dark:text-black" />
                 </div>
               </div>
               <div className="ml-3 flex-1">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white">General</p>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">9:41 AM</span>
+                  <p className="text-sm font-semibold">General</p>
+                  <span className="text-xs opacity-60">
+                    {messages.filter(m => m.to === 'all' || !m.to).length > 0 && 
+                      new Date(Math.max(...messages.filter(m => m.to === 'all' || !m.to).map(m => m.time || 0))).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    }
+                  </span>
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Wanna lunch with me?</p>
+                <p className="text-xs opacity-60">
+                  {messages.filter(m => m.to === 'all' || !m.to).length > 0 
+                    ? messages.filter(m => m.to === 'all' || !m.to).slice(-1)[0].text
+                    : 'No messages yet'
+                  }
+                </p>
               </div>
             </div>
 
             {/* Individual Users */}
-            {users.filter(u => u !== user).map(u => (
-              <div 
-                key={u}
-                className={`flex items-center p-3 rounded-xl cursor-pointer mb-3 ${
-                  to === u 
-                    ? 'bg-blue-50 dark:bg-blue-900/30' 
-                    : 'hover:bg-gray-50 dark:hover:bg-gray-700'
-                }`}
-                onClick={() => setTo(u)}
-              >
-                <div className="relative">
-                  <Avatar className="w-12 h-12">
-                    {u === "Admin" ? (
-                      <AvatarImage src="/kamogelo-photo.jpg" alt="Admin" />
-                    ) : (
-                      <AvatarFallback className="bg-gradient-to-br from-green-500 to-blue-500 text-white font-semibold">
-                        {u.slice(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    )}
-                  </Avatar>
-                  <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-white dark:border-gray-800 rounded-full"></div>
-                </div>
-                <div className="ml-3 flex-1">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-gray-900 dark:text-white">{u}</p>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">9:34 AM</span>
+            {users.filter(u => u !== user).map(u => {
+              const onlineUser = onlineUsers.find(ou => ou.name === u);
+              const userMessages = messages.filter(m => 
+                (m.from === user && m.to === u) || (m.from === u && m.to === user)
+              );
+              const lastMessage = userMessages.slice(-1)[0];
+              
+              return (
+                <div 
+                  key={u}
+                  className={`flex items-center p-3 rounded-xl cursor-pointer mb-3 ${
+                    to === u 
+                      ? 'bg-black dark:bg-white text-white dark:text-black' 
+                      : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-black dark:text-white'
+                  }`}
+                  onClick={() => setTo(u)}
+                >
+                  <div className="relative">
+                    <Avatar className="w-12 h-12">
+                      {u === "Admin" ? (
+                        <AvatarImage src="/kamogelo-photo.jpg" alt="Admin" />
+                      ) : (
+                        <AvatarFallback className={`${onlineUser?.color || 'bg-gray-500'} text-white font-semibold`}>
+                          {u.slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
+                    <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-white dark:border-black rounded-full"></div>
                   </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Photo</p>
+                  <div className="ml-3 flex-1">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold">{u}</p>
+                      {!allowedContacts.includes(u) && u !== 'Admin' && (
+                        <Badge variant="outline" className="text-xs border-gray-400">
+                          Request
+                        </Badge>
+                      )}
+                      <span className="text-xs opacity-60">
+                        {lastMessage && new Date(lastMessage.time || 0).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                    <p className="text-xs opacity-60">
+                      {lastMessage ? lastMessage.text : 'Start a conversation'}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
 
-            {/* Conversations Section */}
+            {/* Online Users Section */}
             <div className="mt-4 mb-3">
-              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Conversation</span>
+              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Online Users ({users.length})</span>
             </div>
           </div>
         </div>
 
         {/* Desktop Chat Header (only visible on desktop) */}
-        <div className="hidden lg:flex bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+        <div className="hidden lg:flex bg-white dark:bg-black border-b border-gray-200 dark:border-gray-800 px-6 py-4">
           <div className="flex items-center space-x-3">
             {to === 'all' ? (
-              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-600 rounded-full flex items-center justify-center">
-                <Hash size={20} className="text-white" />
+              <div className="w-10 h-10 bg-gray-600 dark:bg-gray-400 rounded-full flex items-center justify-center">
+                <Hash size={20} className="text-white dark:text-black" />
               </div>
             ) : (
               <Avatar className="w-10 h-10">
                 {to === "Admin" ? (
                   <AvatarImage src="/kamogelo-photo.jpg" alt="Admin" />
                 ) : (
-                  <AvatarFallback className="bg-gradient-to-br from-green-500 to-blue-500 text-white font-semibold">
+                  <AvatarFallback className={`${onlineUsers.find(u => u.name === to)?.color || 'bg-gray-500'} text-white font-semibold`}>
                     {to.slice(0, 2).toUpperCase()}
                   </AvatarFallback>
                 )}
               </Avatar>
             )}
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              <h2 className="text-lg font-semibold text-black dark:text-white">
                 {to === 'all' ? 'General' : to}
               </h2>
               <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -610,28 +662,36 @@ function getDeviceId() {
         </div>
       {showAdminLogin && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-xl p-6 w-full max-w-xs flex flex-col gap-4 border border-border">
-            <h2 className="text-lg font-bold text-center">Admin Login</h2>
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-6 w-full max-w-xs flex flex-col gap-4 border border-gray-200 dark:border-gray-800">
+            <h2 className="text-lg font-bold text-center text-black dark:text-white">Admin Login</h2>
             <Input
               type="password"
               placeholder="Enter admin password"
               value={adminPassword}
               onChange={e => setAdminPassword(e.target.value)}
+              className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-black dark:text-white"
               autoFocus
             />
             <div className="flex gap-2">
               <Button
-                className="flex-1"
+                className="flex-1 bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200"
                 onClick={() => {
                   if (adminPassword === "2255") {
                     setIsAdmin(true);
                     setShowAdminLogin(false);
                     setUser("Admin");
+                    setUserColor("bg-purple-600");
                     setShowUserRegistration(false);
                   }
                 }}
               >Login</Button>
-              <Button variant="outline" className="flex-1" onClick={() => setShowAdminLogin(false)}>Cancel</Button>
+              <Button 
+                variant="outline" 
+                className="flex-1 border-gray-300 dark:border-gray-600 text-black dark:text-white" 
+                onClick={() => setShowAdminLogin(false)}
+              >
+                Cancel
+              </Button>
             </div>
             {adminPassword && adminPassword !== "2255" && (
               <span className="text-xs text-red-500 text-center">Incorrect password</span>
@@ -643,44 +703,44 @@ function getDeviceId() {
       {/* Phonebook Modal */}
       {showPhonebook && isAdmin && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-xl w-full max-w-4xl max-h-[80vh] overflow-hidden border border-border">
-            <div className="flex items-center justify-between p-4 border-b border-border">
-              <h2 className="text-lg font-bold">User Phonebook</h2>
-              <Button variant="ghost" size="sm" onClick={() => setShowPhonebook(false)}>
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-4xl max-h-[80vh] overflow-hidden border border-gray-200 dark:border-gray-800">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800">
+              <h2 className="text-lg font-bold text-black dark:text-white">User Phonebook</h2>
+              <Button variant="ghost" size="sm" onClick={() => setShowPhonebook(false)} className="text-black dark:text-white">
                 <X size={16} />
               </Button>
             </div>
             
             <div className="overflow-y-auto max-h-[calc(80vh-120px)] p-4">
               {phonebook.length === 0 ? (
-                <div className="text-center text-muted-foreground py-8">
+                <div className="text-center text-gray-500 dark:text-gray-400 py-8">
                   <p>No registered users yet.</p>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {phonebook.map((entry) => (
-                    <div key={entry.id} className="bg-muted/50 rounded-lg p-4 border border-border">
+                    <div key={entry.id} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <h3 className="font-semibold text-lg">{entry.name}</h3>
-                          <p className="text-sm text-muted-foreground">{entry.company}</p>
+                          <h3 className="font-semibold text-lg text-black dark:text-white">{entry.name}</h3>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">{entry.company}</p>
                         </div>
                         <div className="space-y-2 text-sm">
                           <div className="flex items-center gap-2">
-                            <span className="font-medium">Email:</span>
-                            <a href={`mailto:${entry.email}`} className="text-blue-600 hover:underline">
+                            <span className="font-medium text-black dark:text-white">Email:</span>
+                            <a href={`mailto:${entry.email}`} className="text-gray-600 dark:text-gray-400 hover:underline">
                               {entry.email}
                             </a>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="font-medium">Phone:</span>
-                            <a href={`tel:${entry.phone}`} className="text-blue-600 hover:underline">
+                            <span className="font-medium text-black dark:text-white">Phone:</span>
+                            <a href={`tel:${entry.phone}`} className="text-gray-600 dark:text-gray-400 hover:underline">
                               {entry.phone}
                             </a>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="font-medium">Joined:</span>
-                            <span className="text-muted-foreground">
+                            <span className="font-medium text-black dark:text-white">Joined:</span>
+                            <span className="text-gray-600 dark:text-gray-400">
                               {new Date(entry.joinedAt).toLocaleDateString()}
                             </span>
                           </div>
@@ -692,10 +752,10 @@ function getDeviceId() {
               )}
             </div>
             
-            <div className="border-t border-border p-4">
-              <div className="flex justify-between items-center text-sm text-muted-foreground">
+            <div className="border-t border-gray-200 dark:border-gray-800 p-4">
+              <div className="flex justify-between items-center text-sm text-gray-600 dark:text-gray-400">
                 <span>Total registered users: {phonebook.length}</span>
-                <Button variant="outline" onClick={() => setShowPhonebook(false)}>
+                <Button variant="outline" onClick={() => setShowPhonebook(false)} className="border-gray-300 dark:border-gray-600 text-black dark:text-white">
                   Close
                 </Button>
               </div>
@@ -704,7 +764,7 @@ function getDeviceId() {
         </div>
       )}
         {/* Messages Area - Hidden on mobile, visible on desktop */}
-        <div className="hidden lg:flex lg:flex-col lg:flex-1 lg:min-h-0 bg-white dark:bg-gray-800">
+        <div className="hidden lg:flex lg:flex-col lg:flex-1 lg:min-h-0 bg-white dark:bg-black">
           <div className="flex-1 overflow-y-auto p-6 space-y-6 chat-messages" style={{ overscrollBehavior: 'contain' }}>
             {messages
               .filter(msg =>
@@ -712,48 +772,51 @@ function getDeviceId() {
                   ? msg.to === 'all' || !msg.to
                   : (msg.from === user && msg.to === to) || (msg.from === to && msg.to === user)
               )
-              .map(msg => (
-                <div key={msg.id} className="flex items-start space-x-4 message-enter">
-                  {/* Avatar */}
-                  <Avatar className="w-10 h-10 flex-shrink-0">
-                    {msg.from === "Admin" ? (
-                      <AvatarImage src="/kamogelo-photo.jpg" alt="Admin" />
-                    ) : (
-                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-semibold">
-                        {(msg.from === user ? 'You' : msg.from).slice(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    )}
-                  </Avatar>
-                  
-                  {/* Message Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                        {msg.from === user ? 'You' : msg.from}
-                      </span>
-                      {msg.from === "Admin" && (
-                        <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
-                          Admin
-                        </Badge>
+              .map(msg => {
+                const senderUser = onlineUsers.find(u => u.name === msg.from);
+                return (
+                  <div key={msg.id} className="flex items-start space-x-4 message-enter">
+                    {/* Avatar */}
+                    <Avatar className="w-10 h-10 flex-shrink-0">
+                      {msg.from === "Admin" ? (
+                        <AvatarImage src="/kamogelo-photo.jpg" alt="Admin" />
+                      ) : (
+                        <AvatarFallback className={`${msg.from === user ? userColor : senderUser?.color || 'bg-gray-500'} text-white font-semibold`}>
+                          {(msg.from === user ? 'You' : msg.from).slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
                       )}
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {msg.time ? new Date(msg.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                      </span>
-                    </div>
+                    </Avatar>
                     
-                    <div className="bg-gray-50 dark:bg-gray-700 rounded-2xl px-4 py-3 border border-gray-100 dark:border-gray-600 max-w-2xl">
-                      <p className="text-sm text-gray-900 dark:text-gray-100 leading-relaxed break-words">
-                        {msg.text}
-                      </p>
+                    {/* Message Content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <span className="text-sm font-semibold text-black dark:text-white">
+                          {msg.from === user ? 'You' : msg.from}
+                        </span>
+                        {msg.from === "Admin" && (
+                          <Badge variant="secondary" className="text-xs bg-gray-100 text-black dark:bg-gray-800 dark:text-white">
+                            Admin
+                          </Badge>
+                        )}
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {msg.time ? new Date(msg.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                        </span>
+                      </div>
+                      
+                      <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl px-4 py-3 border border-gray-200 dark:border-gray-700 max-w-2xl">
+                        <p className="text-sm text-black dark:text-white leading-relaxed break-words">
+                          {msg.text}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             <div ref={messagesEndRef} />
           </div>
 
           {/* Desktop Message Input */}
-          <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6">
+          <div className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-black p-6">
             <form onSubmit={e => { e.preventDefault(); sendMessage(); }} className="flex items-end space-x-4">
               {isAdmin && (
                 <Avatar className="w-10 h-10 flex-shrink-0">
@@ -762,13 +825,13 @@ function getDeviceId() {
               )}
               
               <div className="flex-1 relative">
-                <div className="bg-gray-50 dark:bg-gray-700 rounded-2xl border border-gray-200 dark:border-gray-600 p-4">
+                <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4">
                   <Input
                     type="text"
                     value={input}
                     onChange={e => setInput(e.target.value)}
                     placeholder={`Message ${to === 'all' ? 'General' : to}...`}
-                    className="border-0 bg-transparent p-0 text-base placeholder:text-gray-500 dark:placeholder:text-gray-400 focus-visible:ring-0 focus-visible:ring-offset-0"
+                    className="border-0 bg-transparent p-0 text-base placeholder:text-gray-500 dark:placeholder:text-gray-400 focus-visible:ring-0 focus-visible:ring-offset-0 text-black dark:text-white"
                     style={{ fontSize: 16 }}
                   />
                   <div className="flex items-center justify-between mt-3">
@@ -784,7 +847,7 @@ function getDeviceId() {
                       type="submit" 
                       disabled={!input.trim()} 
                       size="sm" 
-                      className="h-9 px-4 rounded-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium"
+                      className="h-9 px-4 rounded-full bg-black dark:bg-white hover:bg-gray-800 dark:hover:bg-gray-200 disabled:opacity-50 text-white dark:text-black font-medium"
                     >
                       Send
                     </Button>
@@ -796,11 +859,11 @@ function getDeviceId() {
         </div>
 
         {/* Mobile Bottom Navigation */}
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-4 py-2 safe-area-pb">
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-black border-t border-gray-200 dark:border-gray-800 px-4 py-2 safe-area-pb">
           <div className="flex items-center justify-around">
             <Button variant="ghost" size="sm" className="flex flex-col items-center space-y-1 h-auto py-2">
-              <MessageCircle size={20} className="text-blue-600" />
-              <span className="text-xs text-blue-600 font-medium">Chats</span>
+              <MessageCircle size={20} className="text-black dark:text-white" />
+              <span className="text-xs text-black dark:text-white font-medium">Chats</span>
             </Button>
             <Button variant="ghost" size="sm" className="flex flex-col items-center space-y-1 h-auto py-2">
               <Users size={20} className="text-gray-400" />
@@ -821,6 +884,42 @@ function getDeviceId() {
       {/* Floating Voice Assistant */}
       {user && !showUserRegistration && (
         <FloatingVoiceAssistant onTranscript={handleVoiceTranscript} />
+      )}
+      
+      {/* Permission Request Dialog */}
+      {showPermissionDialog && currentRequest && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-md border border-gray-200 dark:border-gray-800">
+            <div className="p-6">
+              <h3 className="text-lg font-semibold text-black dark:text-white mb-4">
+                Message Request
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                <span className="font-medium text-black dark:text-white">{currentRequest.from}</span> wants to send you a message:
+              </p>
+              <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-3 mb-6">
+                <p className="text-sm text-black dark:text-white break-words">
+                  "{currentRequest.message}"
+                </p>
+              </div>
+              <div className="flex space-x-3">
+                <Button
+                  onClick={() => handlePermissionResponse(false)}
+                  variant="outline"
+                  className="flex-1 border-gray-300 dark:border-gray-600 text-black dark:text-white"
+                >
+                  Decline
+                </Button>
+                <Button
+                  onClick={() => handlePermissionResponse(true)}
+                  className="flex-1 bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200"
+                >
+                  Accept
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

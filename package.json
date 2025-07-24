@@ -23,7 +23,8 @@
     "start": "next start",
     "lint": "next lint",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d out"
+    "deploy": "gh-pages -d out",
+    "chat-server": "node lib/chat-server-enhanced.js"
   },
   "dependencies": {
     "@emotion/is-prop-valid": "latest",
