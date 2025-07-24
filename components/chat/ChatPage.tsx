@@ -265,8 +265,8 @@ export default function ChatPage() {
 
   if (showUserRegistration) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-white dark:bg-black p-4">
-        <div className="bg-gray-50 dark:bg-gray-900 rounded-lg shadow-xl p-6 w-full max-w-md border border-gray-200 dark:border-gray-800">
+      <div className="flex items-center justify-center min-h-screen bg-black p-4">
+        <div className="bg-black rounded-lg shadow-xl p-6 w-full max-w-md border border-gray-800">
           <h2 className="text-xl font-semibold text-center mb-2 text-black dark:text-white">Join the Chat</h2>
           <p className="text-sm text-gray-600 dark:text-gray-400 text-center mb-6">
             Please provide your information to start chatting. You'll be assigned a unique color.
@@ -338,11 +338,11 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex h-screen bg-white dark:bg-black">
+    <div className="flex h-screen bg-black">
       {/* Desktop: Side-by-side layout, Mobile: Stacked layout */}
       
       {/* Left Sidebar - Desktop only */}
-      <div className="hidden lg:flex lg:flex-col lg:w-80 xl:w-96 bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800">
+      <div className="hidden lg:flex lg:flex-col lg:w-80 xl:w-96 bg-black border-r border-gray-800">
         {/* Sidebar Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800">
           <div className="flex items-center space-x-3">
@@ -386,7 +386,7 @@ export default function ChatPage() {
         <div className="px-4 pb-4">
           <div className="relative">
             <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <Input placeholder="Search conversations" className="pl-10 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 text-black dark:text-white" />
+            <Input placeholder="Search conversations" className="pl-10 bg-black border-gray-800 text-white" />
           </div>
         </div>
 
@@ -484,7 +484,7 @@ export default function ChatPage() {
       {/* Main Chat Area - Full width on mobile, alongside sidebar on desktop */}
       <div className="flex-1 flex flex-col min-h-0">
         {/* Mobile Header (only visible on mobile) */}
-        <div className="lg:hidden bg-white dark:bg-black border-b border-gray-200 dark:border-gray-800">
+        <div className="lg:hidden bg-black border-b border-gray-800">
           {/* Mobile Top Bar */}
           <div className="flex items-center justify-between p-4">
             <div className="flex items-center space-x-3">
@@ -605,7 +605,7 @@ export default function ChatPage() {
         </div>
 
         {/* Desktop Chat Header (only visible on desktop) */}
-        <div className="hidden lg:flex bg-white dark:bg-black border-b border-gray-200 dark:border-gray-800 px-6 py-4">
+        <div className="hidden lg:flex bg-black border-b border-gray-800 px-6 py-4">
           <div className="flex items-center space-x-3">
             {to === 'all' ? (
               <div className="w-10 h-10 bg-gray-600 dark:bg-gray-400 rounded-full flex items-center justify-center">
@@ -633,8 +633,8 @@ export default function ChatPage() {
           </div>
         </div>
       {showAdminLogin && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-6 w-full max-w-xs flex flex-col gap-4 border border-gray-200 dark:border-gray-800">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+          <div className="bg-black rounded-lg shadow-xl p-6 w-full max-w-xs flex flex-col gap-4 border border-gray-800">
             <h2 className="text-lg font-bold text-center text-black dark:text-white">Admin Login</h2>
             <Input
               type="password"
@@ -674,8 +674,8 @@ export default function ChatPage() {
       
       {/* Phonebook Modal */}
       {showPhonebook && isAdmin && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-4xl max-h-[80vh] overflow-hidden border border-gray-200 dark:border-gray-800">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-black rounded-lg shadow-xl w-full max-w-4xl max-h-[80vh] overflow-hidden border border-gray-800">
             <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800">
               <h2 className="text-lg font-bold text-black dark:text-white">User Phonebook</h2>
               <Button variant="ghost" size="sm" onClick={() => setShowPhonebook(false)} className="text-black dark:text-white">
@@ -736,7 +736,7 @@ export default function ChatPage() {
         </div>
       )}
         {/* Messages Area - Hidden on mobile, visible on desktop */}
-        <div className="hidden lg:flex lg:flex-col lg:flex-1 lg:min-h-0 bg-white dark:bg-black">
+        <div className="hidden lg:flex lg:flex-col lg:flex-1 lg:min-h-0 bg-black">
           <div className="flex-1 overflow-y-auto p-6 space-y-6 chat-messages" style={{ overscrollBehavior: 'contain' }}>
             {messages
               .filter(msg =>
@@ -788,7 +788,7 @@ export default function ChatPage() {
           </div>
 
           {/* Desktop Message Input */}
-          <div className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-black p-6">
+          <div className="border-t border-gray-800 bg-black p-6">
             <form onSubmit={e => { e.preventDefault(); sendMessage(); }} className="flex items-end space-x-4">
               {isAdmin && (
                 <Avatar className="w-10 h-10 flex-shrink-0">
@@ -831,7 +831,7 @@ export default function ChatPage() {
         </div>
 
         {/* Mobile Bottom Navigation */}
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-black border-t border-gray-200 dark:border-gray-800 px-4 py-2 safe-area-pb">
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-black border-t border-gray-800 px-4 py-2 safe-area-pb">
           <div className="flex items-center justify-around">
             <Button variant="ghost" size="sm" className="flex flex-col items-center space-y-1 h-auto py-2">
               <MessageCircle size={20} className="text-black dark:text-white" />
