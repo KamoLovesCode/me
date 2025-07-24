@@ -13,7 +13,11 @@ import FloatingVoiceAssistant from "@/components/FloatingVoiceAssistant"
 // Import the peer chat system
 let PeerChatSystem: any = null;
 if (typeof window !== 'undefined') {
-  PeerChatSystem = require('@/lib/peer-chat').default;
+  try {
+    PeerChatSystem = require('@/lib/peer-chat').default;
+  } catch (error) {
+    console.warn('Peer chat system not available:', error);
+  }
 }
 
 
@@ -170,38 +174,57 @@ export default function ChatPage() {
     
     // Initialize peer chat system
     if (typeof window !== 'undefined' && PeerChatSystem) {
-      chatSystem.current = new PeerChatSystem()
-      
-      // Set up event handlers
-      chatSystem.current.onNewMessage = (message: Message) => {
-        setMessages(prev => [...prev, message])
+      try {
+        chatSystem.current = new PeerChatSystem()
+        
+        // Set up event handlers
+        chatSystem.current.onNewMessage = (message: Message) => {
+          setMessages(prev => [...prev, message])
+        }
+        
+        chatSystem.current.onUsersUpdate = (users: any[]) => {
+          setOnlineUsers(users)
+          setUsers(users.map(u => u.name))
+        }
+        
+        chatSystem.current.onPermissionRequest = (from: string, text: string, requestId?: string) => {
+          setCurrentRequest({ from, message: text, id: requestId || Date.now().toString() })
+          setShowPermissionDialog(true)
+        }
+        
+        chatSystem.current.onPermissionGranted = (from: string) => {
+          setAllowedContacts(prev => [...prev, from])
+        }
+        
+        // Join the chat system
+        const onlineUsersList = chatSystem.current.join(newUser.name, assignedColor, newUser.email, newUser.phone)
+        setOnlineUsers(onlineUsersList)
+        setUsers(onlineUsersList.map(u => u.name))
+        
+        // Load existing messages
+        const existingMessages = chatSystem.current.getMessages()
+        setMessages(existingMessages)
+        
+        // Start heartbeat
+        chatSystem.current.startHeartbeat()
+      } catch (error) {
+        console.error('Failed to initialize chat system:', error)
+        // Fallback: just set the user without chat functionality
+        setMessages([{
+          id: Date.now(),
+          text: 'Welcome! Chat functionality is loading...',
+          from: 'System',
+          time: Date.now()
+        }])
       }
-      
-      chatSystem.current.onUsersUpdate = (users: any[]) => {
-        setOnlineUsers(users)
-        setUsers(users.map(u => u.name))
-      }
-      
-      chatSystem.current.onPermissionRequest = (from: string, text: string, requestId?: string) => {
-        setCurrentRequest({ from, message: text, id: requestId || Date.now().toString() })
-        setShowPermissionDialog(true)
-      }
-      
-      chatSystem.current.onPermissionGranted = (from: string) => {
-        setAllowedContacts(prev => [...prev, from])
-      }
-      
-      // Join the chat system
-      const onlineUsersList = chatSystem.current.join(newUser.name, assignedColor, newUser.email, newUser.phone)
-      setOnlineUsers(onlineUsersList)
-      setUsers(onlineUsersList.map(u => u.name))
-      
-      // Load existing messages
-      const existingMessages = chatSystem.current.getMessages()
-      setMessages(existingMessages)
-      
-      // Start heartbeat
-      chatSystem.current.startHeartbeat()
+    } else {
+      console.warn('Chat system not available')
+      setMessages([{
+        id: Date.now(),
+        text: 'Welcome! You can use this interface, but real-time chat is not available.',
+        from: 'System',
+        time: Date.now()
+      }])
     }
   }
 
@@ -240,10 +263,39 @@ export default function ChatPage() {
   }
 
   const sendMessage = () => {
-    if (!input.trim() || !chatSystem.current) return
+    if (!input.trim()) return
     
-    const success = chatSystem.current.sendMessage(to, input)
-    if (success) {
+    if (chatSystem.current) {
+      try {
+        const success = chatSystem.current.sendMessage(to, input)
+        if (success) {
+          setInput("")
+        } else {
+          console.log('Message requires permission or failed to send')
+        }
+      } catch (error) {
+        console.error('Error sending message:', error)
+        // Fallback: show message locally
+        const fallbackMessage: Message = {
+          id: Date.now(),
+          text: `[Local] ${input}`,
+          from: user,
+          to: to,
+          time: Date.now()
+        }
+        setMessages(prev => [...prev, fallbackMessage])
+        setInput("")
+      }
+    } else {
+      // Fallback: show message locally
+      const fallbackMessage: Message = {
+        id: Date.now(),
+        text: `[Local] ${input}`,
+        from: user,
+        to: to,
+        time: Date.now()
+      }
+      setMessages(prev => [...prev, fallbackMessage])
       setInput("")
     }
   }
@@ -336,13 +388,13 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex h-screen bg-black">
+    <div className="flex h-screen bg-black chat-page">
       {/* Desktop: Side-by-side layout, Mobile: Stacked layout */}
       
       {/* Left Sidebar - Desktop only */}
       <div className="hidden lg:flex lg:flex-col lg:w-80 xl:w-96 bg-black border-r border-gray-800">
         {/* Sidebar Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800">
+        <div className="flex items-center justify-between p-4 border-b border-gray-800">
           <div className="flex items-center space-x-3">
             <Avatar className="w-10 h-10">
               <AvatarFallback className={`${userColor} text-white font-semibold`}>
@@ -350,17 +402,17 @@ export default function ChatPage() {
               </AvatarFallback>
             </Avatar>
             <div>
-              <h1 className="text-lg font-semibold text-black dark:text-white">{user}</h1>
-              <p className="text-sm text-gray-600 dark:text-gray-400">● Online</p>
+              <h1 className="text-lg font-semibold text-white">{user}</h1>
+              <p className="text-sm text-gray-400">● Online</p>
             </div>
           </div>
           <div className="flex items-center space-x-1">
             {isAdmin && (
-              <Button size="sm" variant="ghost" onClick={() => setShowPhonebook(true)} className="text-black dark:text-white">
+              <Button size="sm" variant="ghost" onClick={() => setShowPhonebook(true)} className="text-white hover:bg-gray-800">
                 <Phone size={16} />
               </Button>
             )}
-            <Button size="sm" variant="ghost" onClick={() => setShowAdminLogin(true)} className="text-black dark:text-white">
+            <Button size="sm" variant="ghost" onClick={() => setShowAdminLogin(true)} className="text-white hover:bg-gray-800">
               <UserCog size={16} />
             </Button>
             <Button size="sm" variant="ghost" onClick={() => {
@@ -369,7 +421,7 @@ export default function ChatPage() {
               localStorage.removeItem('chat-username');
               localStorage.removeItem('user-color');
               window.location.href = "/";
-            }} className="text-black dark:text-white">
+            }} className="text-white hover:bg-gray-800">
               <X size={16} />
             </Button>
           </div>
@@ -377,14 +429,14 @@ export default function ChatPage() {
 
         {/* Chat Title */}
         <div className="p-4">
-          <h2 className="text-2xl font-bold mb-4 text-black dark:text-white">Chats</h2>
+          <h2 className="text-2xl font-bold mb-4 text-white">Chats</h2>
         </div>
 
         {/* Search */}
         <div className="px-4 pb-4">
           <div className="relative">
             <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <Input placeholder="Search conversations" className="pl-10 bg-black border-gray-800 text-white" />
+            <Input placeholder="Search conversations" className="pl-10 bg-gray-900 border-gray-700 text-white placeholder:text-gray-500" />
           </div>
         </div>
 
@@ -394,14 +446,14 @@ export default function ChatPage() {
           <div 
             className={`flex items-center p-3 rounded-xl cursor-pointer mb-2 transition-all duration-200 ${
               to === 'all' 
-                ? 'bg-black dark:bg-white text-white dark:text-black' 
-                : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-black dark:text-white'
+                ? 'bg-white text-black' 
+                : 'hover:bg-gray-800 text-white'
             }`}
             onClick={() => setTo('all')}
           >
             <div className="relative">
-              <div className="w-12 h-12 bg-gray-600 dark:bg-gray-400 rounded-full flex items-center justify-center">
-                <Hash size={20} className="text-white dark:text-black" />
+              <div className="w-12 h-12 bg-gray-600 rounded-full flex items-center justify-center">
+                <Hash size={20} className="text-white" />
               </div>
             </div>
             <div className="ml-3 flex-1 min-w-0">
@@ -424,7 +476,7 @@ export default function ChatPage() {
 
           {/* Online Users Section */}
           <div className="mt-6 mb-3">
-            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Online Users</span>
+            <span className="text-xs font-medium text-gray-400">Online Users</span>
           </div>
 
           {/* Individual Users */}
@@ -440,8 +492,8 @@ export default function ChatPage() {
                 key={u}
                 className={`flex items-center p-3 rounded-xl cursor-pointer mb-2 transition-all duration-200 ${
                   to === u 
-                    ? 'bg-black dark:bg-white text-white dark:text-black' 
-                    : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-black dark:text-white'
+                    ? 'bg-white text-black' 
+                    : 'hover:bg-gray-800 text-white'
                 }`}
                 onClick={() => setTo(u)}
               >
@@ -455,7 +507,7 @@ export default function ChatPage() {
                       </AvatarFallback>
                     )}
                   </Avatar>
-                  <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-white dark:border-black rounded-full"></div>
+                  <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-black rounded-full"></div>
                 </div>
                 <div className="ml-3 flex-1 min-w-0">
                   <div className="flex items-center justify-between">
@@ -492,15 +544,15 @@ export default function ChatPage() {
                 </AvatarFallback>
               </Avatar>
               <div>
-                <h1 className="text-lg font-semibold text-black dark:text-white">{user}</h1>
-                <p className="text-sm text-gray-600 dark:text-gray-400">● Online</p>
+                <h1 className="text-lg font-semibold text-white">{user}</h1>
+                <p className="text-sm text-gray-400">● Online</p>
               </div>
             </div>
             <div className="flex items-center space-x-1">
-              <Button size="sm" variant="ghost" className="text-black dark:text-white">
+              <Button size="sm" variant="ghost" className="text-white hover:bg-gray-800">
                 <Search size={18} />
               </Button>
-              <Button size="sm" variant="ghost" className="text-black dark:text-white">
+              <Button size="sm" variant="ghost" className="text-white hover:bg-gray-800">
                 <MoreVertical size={18} />
               </Button>
             </div>
@@ -508,7 +560,7 @@ export default function ChatPage() {
 
           {/* Mobile Chat Title */}
           <div className="px-4 pb-4">
-            <h2 className="text-2xl font-bold mb-4 text-black dark:text-white">Chats</h2>
+            <h2 className="text-2xl font-bold mb-4 text-white">Chats</h2>
           </div>
 
           {/* Mobile Chat List */}
@@ -517,14 +569,14 @@ export default function ChatPage() {
             <div 
               className={`flex items-center p-3 rounded-xl cursor-pointer mb-3 ${
                 to === 'all' 
-                  ? 'bg-black dark:bg-white text-white dark:text-black' 
-                  : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-black dark:text-white'
+                  ? 'bg-white text-black' 
+                  : 'hover:bg-gray-800 text-white'
               }`}
               onClick={() => setTo('all')}
             >
               <div className="relative">
-                <div className="w-12 h-12 bg-gray-600 dark:bg-gray-400 rounded-full flex items-center justify-center">
-                  <Hash size={20} className="text-white dark:text-black" />
+                <div className="w-12 h-12 bg-gray-600 rounded-full flex items-center justify-center">
+                  <Hash size={20} className="text-white" />
                 </div>
               </div>
               <div className="ml-3 flex-1">
@@ -558,8 +610,8 @@ export default function ChatPage() {
                   key={u}
                   className={`flex items-center p-3 rounded-xl cursor-pointer mb-3 ${
                     to === u 
-                      ? 'bg-black dark:bg-white text-white dark:text-black' 
-                      : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-black dark:text-white'
+                      ? 'bg-white text-black' 
+                      : 'hover:bg-gray-800 text-white'
                   }`}
                   onClick={() => setTo(u)}
                 >
@@ -573,7 +625,7 @@ export default function ChatPage() {
                         </AvatarFallback>
                       )}
                     </Avatar>
-                    <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-white dark:border-black rounded-full"></div>
+                    <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-black rounded-full"></div>
                   </div>
                   <div className="ml-3 flex-1">
                     <div className="flex items-center justify-between">
@@ -597,7 +649,7 @@ export default function ChatPage() {
 
             {/* Online Users Section */}
             <div className="mt-4 mb-3">
-              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Online Users ({users.length})</span>
+              <span className="text-xs font-medium text-gray-400">Online Users ({users.length})</span>
             </div>
           </div>
         </div>
@@ -606,8 +658,8 @@ export default function ChatPage() {
         <div className="hidden lg:flex bg-black border-b border-gray-800 px-6 py-4">
           <div className="flex items-center space-x-3">
             {to === 'all' ? (
-              <div className="w-10 h-10 bg-gray-600 dark:bg-gray-400 rounded-full flex items-center justify-center">
-                <Hash size={20} className="text-white dark:text-black" />
+              <div className="w-10 h-10 bg-gray-600 rounded-full flex items-center justify-center">
+                <Hash size={20} className="text-white" />
               </div>
             ) : (
               <Avatar className="w-10 h-10">
@@ -621,10 +673,10 @@ export default function ChatPage() {
               </Avatar>
             )}
             <div>
-              <h2 className="text-lg font-semibold text-black dark:text-white">
+              <h2 className="text-lg font-semibold text-white">
                 {to === 'all' ? 'General' : to}
               </h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-gray-400">
                 {to === 'all' ? `${users.length + 1} members` : 'Active now'}
               </p>
             </div>
@@ -633,18 +685,18 @@ export default function ChatPage() {
       {showAdminLogin && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
           <div className="bg-black rounded-lg shadow-xl p-6 w-full max-w-xs flex flex-col gap-4 border border-gray-800">
-            <h2 className="text-lg font-bold text-center text-black dark:text-white">Admin Login</h2>
+            <h2 className="text-lg font-bold text-center text-white">Admin Login</h2>
             <Input
               type="password"
               placeholder="Enter admin password"
               value={adminPassword}
               onChange={e => setAdminPassword(e.target.value)}
-              className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-black dark:text-white"
+              className="bg-gray-900 border-gray-700 text-white placeholder:text-gray-500"
               autoFocus
             />
             <div className="flex gap-2">
               <Button
-                className="flex-1 bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200"
+                className="flex-1 bg-white text-black hover:bg-gray-200"
                 onClick={() => {
                   if (adminPassword === "2255") {
                     setIsAdmin(true);
@@ -657,14 +709,14 @@ export default function ChatPage() {
               >Login</Button>
               <Button 
                 variant="outline" 
-                className="flex-1 border-gray-300 dark:border-gray-600 text-black dark:text-white" 
+                className="flex-1 border-gray-600 text-white hover:bg-gray-800" 
                 onClick={() => setShowAdminLogin(false)}
               >
                 Cancel
               </Button>
             </div>
             {adminPassword && adminPassword !== "2255" && (
-              <span className="text-xs text-red-500 text-center">Incorrect password</span>
+              <span className="text-xs text-red-400 text-center">Incorrect password</span>
             )}
           </div>
         </div>
@@ -674,43 +726,43 @@ export default function ChatPage() {
       {showPhonebook && isAdmin && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-black rounded-lg shadow-xl w-full max-w-4xl max-h-[80vh] overflow-hidden border border-gray-800">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800">
-              <h2 className="text-lg font-bold text-black dark:text-white">User Phonebook</h2>
-              <Button variant="ghost" size="sm" onClick={() => setShowPhonebook(false)} className="text-black dark:text-white">
+            <div className="flex items-center justify-between p-4 border-b border-gray-800">
+              <h2 className="text-lg font-bold text-white">User Phonebook</h2>
+              <Button variant="ghost" size="sm" onClick={() => setShowPhonebook(false)} className="text-white hover:bg-gray-800">
                 <X size={16} />
               </Button>
             </div>
             
             <div className="overflow-y-auto max-h-[calc(80vh-120px)] p-4">
               {phonebook.length === 0 ? (
-                <div className="text-center text-gray-500 dark:text-gray-400 py-8">
+                <div className="text-center text-gray-400 py-8">
                   <p>No registered users yet.</p>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {phonebook.map((entry) => (
-                    <div key={entry.id} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                    <div key={entry.id} className="bg-gray-800 rounded-lg p-4 border border-gray-700">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <h3 className="font-semibold text-lg text-black dark:text-white">{entry.name}</h3>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">{entry.company}</p>
+                          <h3 className="font-semibold text-lg text-white">{entry.name}</h3>
+                          <p className="text-sm text-gray-400">{entry.company}</p>
                         </div>
                         <div className="space-y-2 text-sm">
                           <div className="flex items-center gap-2">
-                            <span className="font-medium text-black dark:text-white">Email:</span>
-                            <a href={`mailto:${entry.email}`} className="text-gray-600 dark:text-gray-400 hover:underline">
+                            <span className="font-medium text-white">Email:</span>
+                            <a href={`mailto:${entry.email}`} className="text-gray-400 hover:underline">
                               {entry.email}
                             </a>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="font-medium text-black dark:text-white">Phone:</span>
-                            <a href={`tel:${entry.phone}`} className="text-gray-600 dark:text-gray-400 hover:underline">
+                            <span className="font-medium text-white">Phone:</span>
+                            <a href={`tel:${entry.phone}`} className="text-gray-400 hover:underline">
                               {entry.phone}
                             </a>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="font-medium text-black dark:text-white">Joined:</span>
-                            <span className="text-gray-600 dark:text-gray-400">
+                            <span className="font-medium text-white">Joined:</span>
+                            <span className="text-gray-400">
                               {new Date(entry.joinedAt).toLocaleDateString()}
                             </span>
                           </div>
@@ -722,10 +774,10 @@ export default function ChatPage() {
               )}
             </div>
             
-            <div className="border-t border-gray-200 dark:border-gray-800 p-4">
-              <div className="flex justify-between items-center text-sm text-gray-600 dark:text-gray-400">
+            <div className="border-t border-gray-800 p-4">
+              <div className="flex justify-between items-center text-sm text-gray-400">
                 <span>Total registered users: {phonebook.length}</span>
-                <Button variant="outline" onClick={() => setShowPhonebook(false)} className="border-gray-300 dark:border-gray-600 text-black dark:text-white">
+                <Button variant="outline" onClick={() => setShowPhonebook(false)} className="border-gray-600 text-white hover:bg-gray-800">
                   Close
                 </Button>
               </div>
@@ -760,21 +812,21 @@ export default function ChatPage() {
                     {/* Message Content */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center space-x-2 mb-2">
-                        <span className="text-sm font-semibold text-black dark:text-white">
+                        <span className="text-sm font-semibold text-white">
                           {msg.from === user ? 'You' : msg.from}
                         </span>
                         {msg.from === "Admin" && (
-                          <Badge variant="secondary" className="text-xs bg-gray-100 text-black dark:bg-gray-800 dark:text-white">
+                          <Badge variant="secondary" className="text-xs bg-gray-800 text-white border-gray-700">
                             Admin
                           </Badge>
                         )}
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                        <span className="text-xs text-gray-400">
                           {msg.time ? new Date(msg.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                         </span>
                       </div>
                       
-                      <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl px-4 py-3 border border-gray-200 dark:border-gray-700 max-w-2xl">
-                        <p className="text-sm text-black dark:text-white leading-relaxed break-words">
+                      <div className="bg-gray-800 rounded-2xl px-4 py-3 border border-gray-700 max-w-2xl">
+                        <p className="text-sm text-white leading-relaxed break-words">
                           {msg.text}
                         </p>
                       </div>
@@ -795,29 +847,29 @@ export default function ChatPage() {
               )}
               
               <div className="flex-1 relative">
-                <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4">
+                <div className="bg-gray-800 rounded-2xl border border-gray-700 p-4">
                   <Input
                     type="text"
                     value={input}
                     onChange={e => setInput(e.target.value)}
                     placeholder={`Message ${to === 'all' ? 'General' : to}...`}
-                    className="border-0 bg-transparent p-0 text-base placeholder:text-gray-500 dark:placeholder:text-gray-400 focus-visible:ring-0 focus-visible:ring-offset-0 text-black dark:text-white"
+                    className="border-0 bg-transparent p-0 text-base placeholder:text-gray-400 focus-visible:ring-0 focus-visible:ring-offset-0 text-white"
                     style={{ fontSize: 16 }}
                   />
                   <div className="flex items-center justify-between mt-3">
                     <div className="flex items-center space-x-2">
-                      <Button type="button" size="sm" variant="ghost" className="h-8 w-8 p-0 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600">
-                        <Paperclip size={16} className="text-gray-500 dark:text-gray-400" />
+                      <Button type="button" size="sm" variant="ghost" className="h-8 w-8 p-0 rounded-full hover:bg-gray-600">
+                        <Paperclip size={16} className="text-gray-400" />
                       </Button>
-                      <Button type="button" size="sm" variant="ghost" className="h-8 w-8 p-0 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600">
-                        <Smile size={16} className="text-gray-500 dark:text-gray-400" />
+                      <Button type="button" size="sm" variant="ghost" className="h-8 w-8 p-0 rounded-full hover:bg-gray-600">
+                        <Smile size={16} className="text-gray-400" />
                       </Button>
                     </div>
                     <Button 
                       type="submit" 
                       disabled={!input.trim()} 
                       size="sm" 
-                      className="h-9 px-4 rounded-full bg-black dark:bg-white hover:bg-gray-800 dark:hover:bg-gray-200 disabled:opacity-50 text-white dark:text-black font-medium"
+                      className="h-9 px-4 rounded-full bg-white hover:bg-gray-200 disabled:opacity-50 text-black font-medium"
                     >
                       Send
                     </Button>
@@ -832,8 +884,8 @@ export default function ChatPage() {
         <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-black border-t border-gray-800 px-4 py-2 safe-area-pb">
           <div className="flex items-center justify-around">
             <Button variant="ghost" size="sm" className="flex flex-col items-center space-y-1 h-auto py-2">
-              <MessageCircle size={20} className="text-black dark:text-white" />
-              <span className="text-xs text-black dark:text-white font-medium">Chats</span>
+              <MessageCircle size={20} className="text-white" />
+              <span className="text-xs text-white font-medium">Chats</span>
             </Button>
             <Button variant="ghost" size="sm" className="flex flex-col items-center space-y-1 h-auto py-2">
               <Users size={20} className="text-gray-400" />
@@ -859,16 +911,16 @@ export default function ChatPage() {
       {/* Permission Request Dialog */}
       {showPermissionDialog && currentRequest && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-md border border-gray-200 dark:border-gray-800">
+          <div className="bg-black rounded-lg shadow-xl w-full max-w-md border border-gray-800">
             <div className="p-6">
-              <h3 className="text-lg font-semibold text-black dark:text-white mb-4">
+              <h3 className="text-lg font-semibold text-white mb-4">
                 Message Request
               </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                <span className="font-medium text-black dark:text-white">{currentRequest.from}</span> wants to send you a message:
+              <p className="text-sm text-gray-400 mb-4">
+                <span className="font-medium text-white">{currentRequest.from}</span> wants to send you a message:
               </p>
-              <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-3 mb-6">
-                <p className="text-sm text-black dark:text-white break-words">
+              <div className="bg-gray-800 rounded-lg p-3 mb-6 border border-gray-700">
+                <p className="text-sm text-white break-words">
                   "{currentRequest.message}"
                 </p>
               </div>
@@ -876,13 +928,13 @@ export default function ChatPage() {
                 <Button
                   onClick={() => handlePermissionResponse(false)}
                   variant="outline"
-                  className="flex-1 border-gray-300 dark:border-gray-600 text-black dark:text-white"
+                  className="flex-1 border-gray-600 text-white hover:bg-gray-800"
                 >
                   Decline
                 </Button>
                 <Button
                   onClick={() => handlePermissionResponse(true)}
-                  className="flex-1 bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200"
+                  className="flex-1 bg-white text-black hover:bg-gray-200"
                 >
                   Accept
                 </Button>

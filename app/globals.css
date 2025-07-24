@@ -2,6 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Chat page specific dark theme overrides */
+.chat-page {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+.chat-page * {
+  border-color: #374151 !important;
+}
+
+.chat-page input {
+  background-color: #1f2937 !important;
+  color: #ffffff !important;
+}
+
+.chat-page input::placeholder {
+  color: #9ca3af !important;
+}
+
 @layer base {
   :root {
     --font-inter: "Inter", sans-serif;
