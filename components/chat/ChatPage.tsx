@@ -152,24 +152,27 @@ function getDeviceId() {
           }
         `}</style>
         <h1 className="text-xl font-bold tracking-tight">Chat</h1>
-        <div className="flex gap-2 items-center">
+        <div className="flex gap-2 items-center justify-end w-auto">
+          {/* Center icons in buttons using flex */}
           <button
-            className="p-1 rounded-full bg-blue-500 hover:bg-blue-600 transition"
+            className="p-1 rounded-full bg-blue-500 hover:bg-blue-600 transition flex items-center justify-center"
             aria-label="Admin Login"
             onClick={() => setShowAdminLogin(true)}
+            style={{ width: 32, height: 32 }}
           >
-            <UserCog size={22} className="text-white" />
+            <UserCog size={16} className="text-white mx-auto" />
           </button>
           <button
-            className="ml-2 p-1 rounded-full bg-red-500 hover:bg-red-600 transition"
+            className="ml-2 p-1 rounded-full bg-red-500 hover:bg-red-600 transition flex items-center justify-center"
             aria-label="Exit Chat"
             onClick={() => {
               setUser("");
               localStorage.removeItem('chat-username');
               window.location.href = "/";
             }}
+            style={{ width: 32, height: 32 }}
           >
-            <X size={24} className="text-white" />
+            <X size={16} className="text-white mx-auto" />
           </button>
         </div>
       </header>
@@ -188,7 +191,7 @@ function getDeviceId() {
               <Button
                 className="flex-1"
                 onClick={() => {
-                  if (adminPassword === "admin123") { // Change password as needed
+                  if (adminPassword === "2255") { // Changed password as requested
                     setIsAdmin(true);
                     setShowAdminLogin(false);
                     setUser("Admin");
@@ -197,13 +200,12 @@ function getDeviceId() {
               >Login</Button>
               <Button variant="outline" className="flex-1" onClick={() => setShowAdminLogin(false)}>Cancel</Button>
             </div>
-            {adminPassword && adminPassword !== "admin123" && (
+            {adminPassword && adminPassword !== "2255" && (
               <span className="text-xs text-red-500 text-center">Incorrect password</span>
             )}
           </div>
         </div>
       )}
-      </header>
       <div className="flex flex-1 overflow-hidden flex-col md:flex-row min-h-0">
         {/* Chat list panel */}
         <div className="w-full md:w-64 border-b md:border-b-0 md:border-r border-border p-4 overflow-y-auto bg-background">
@@ -266,7 +268,7 @@ function getDeviceId() {
              onSubmit={e => { e.preventDefault(); sendMessage(); }}
            >
              {isAdmin && (
-               <Image src="/kamogelo-photo.jpg" alt="Admin" width={32} height={32} className="rounded-full border border-primary" />
+               <Image src="/kamogelo-photo.jpg" alt="Admin" width={24} height={24} className="rounded-full border border-primary object-cover" style={{ width: 24, height: 24 }} />
              )}
              <Input
                type="text"
