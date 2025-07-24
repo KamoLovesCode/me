@@ -136,12 +136,21 @@ function getDeviceId() {
     <div className="flex flex-col h-screen bg-background text-foreground">
       <header className="p-4 border-b border-border flex items-center justify-between">
         <h1 className="text-xl font-semibold">Chat</h1>
-        <Link href="/">
-  const [deviceId] = useState(getDeviceId());
-  const [topic, setTopic] = useState("");
-  const [showDetails, setShowDetails] = useState(true);
-          <X size={24} className="text-muted-foreground hover:text-foreground cursor-pointer" />
-        </Link>
+        <div className="flex gap-2 items-center">
+          <button
+            className="text-xs text-red-500 border border-red-500 rounded px-2 py-1 hover:bg-red-50 dark:hover:bg-zinc-900 transition"
+            onClick={() => {
+              setUser("");
+              localStorage.removeItem('chat-username');
+              window.location.href = "/";
+            }}
+          >
+            Exit Chat
+          </button>
+          <Link href="/">
+            <X size={24} className="text-muted-foreground hover:text-foreground cursor-pointer" />
+          </Link>
+        </div>
       </header>
       <div className="flex flex-1 overflow-hidden flex-col md:flex-row">
         {/* Chat list panel */}
