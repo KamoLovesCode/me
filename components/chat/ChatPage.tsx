@@ -1,11 +1,12 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { MessageCircle, X, UserCog } from 'lucide-react'
+import { MessageCircle, X, UserCog, Phone } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import FloatingVoiceAssistant from "@/components/FloatingVoiceAssistant"
 
 
 interface Message {
@@ -19,14 +20,25 @@ interface Message {
 export default function ChatPage() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [showAdminLogin, setShowAdminLogin] = useState(false)
+  const [showPhonebook, setShowPhonebook] = useState(false)
+  const [showUserRegistration, setShowUserRegistration] = useState(true)
   const [adminPassword, setAdminPassword] = useState("")
+  
+  // User registration fields
+  const [userInfo, setUserInfo] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    company: ""
+  })
+  const [registrationErrors, setRegistrationErrors] = useState<string[]>([])
+  
   // Chat state
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [users, setUsers] = useState<string[]>([])
   const [user, setUser] = useState<string>("")
   const [to, setTo] = useState<string>('all')
-  const [showPrompt, setShowPrompt] = useState(true)
   const [nameInput, setNameInput] = useState("")
   const ws = useRef<WebSocket | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -36,12 +48,99 @@ export default function ChatPage() {
   const [showTopicInput, setShowTopicInput] = useState(false);
   const [topicInput, setTopicInput] = useState("");
 
+  // Phonebook state
+  const [phonebook, setPhonebook] = useState<Array<{
+    id: string;
+    name: string;
+    email: string;
+    phone: string;
+    company: string;
+    joinedAt: string;
+  }>>([])
+
+  // Load registered users from localStorage
+  useEffect(() => {
+    const registeredUsers = localStorage.getItem('chat-phonebook')
+    if (registeredUsers) {
+      try {
+        setPhonebook(JSON.parse(registeredUsers))
+      } catch {}
+    }
+  }, [])
+
+  // Validation functions
+  const validateName = (name: string): boolean => {
+    // Must be 2-50 characters, only letters, spaces, hyphens, apostrophes
+    const nameRegex = /^[a-zA-Z\s\-']{2,50}$/
+    return nameRegex.test(name.trim())
+  }
+
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email.trim())
+  }
+
+  const validatePhone = (phone: string): boolean => {
+    // Allow various phone formats
+    const phoneRegex = /^[\+]?[0-9\s\-\(\)]{10,15}$/
+    return phoneRegex.test(phone.trim())
+  }
+
+  const validateUserRegistration = (): boolean => {
+    const errors: string[] = []
+    
+    if (!validateName(userInfo.name)) {
+      errors.push("Name must be 2-50 characters and contain only letters, spaces, hyphens, or apostrophes")
+    }
+    
+    if (!validateEmail(userInfo.email)) {
+      errors.push("Please enter a valid email address")
+    }
+    
+    if (!validatePhone(userInfo.phone)) {
+      errors.push("Please enter a valid phone number")
+    }
+    
+    if (userInfo.company.trim().length < 2) {
+      errors.push("Company/Organization name is required")
+    }
+    
+    // Check if email already exists
+    if (phonebook.some(entry => entry.email.toLowerCase() === userInfo.email.toLowerCase())) {
+      errors.push("This email is already registered")
+    }
+    
+    setRegistrationErrors(errors)
+    return errors.length === 0
+  }
+
+  const registerUser = () => {
+    if (!validateUserRegistration()) return
+    
+    const newUser = {
+      id: Date.now().toString(),
+      name: userInfo.name.trim(),
+      email: userInfo.email.trim().toLowerCase(),
+      phone: userInfo.phone.trim(),
+      company: userInfo.company.trim(),
+      joinedAt: new Date().toISOString()
+    }
+    
+    const updatedPhonebook = [...phonebook, newUser]
+    setPhonebook(updatedPhonebook)
+    localStorage.setItem('chat-phonebook', JSON.stringify(updatedPhonebook))
+    localStorage.setItem('chat-username', newUser.name)
+    
+    setUser(newUser.name)
+    setShowUserRegistration(false)
+  }
+
   // Load chat history for this user from localStorage
   useEffect(() => {
     const saved = localStorage.getItem('chat-username') || ''
     if (saved) {
       setUser(saved)
-      setShowPrompt(false)
+      setShowUserRegistration(false)
       const chatHistory = localStorage.getItem(`chat-history-${saved}`)
       if (chatHistory) {
         try {
@@ -96,6 +195,18 @@ function getDeviceId() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  const handleVoiceTranscript = (transcript: string) => {
+    // Add the voice transcript as a message from the user
+    if (ws.current && user) {
+      ws.current.send(JSON.stringify({
+        type: 'message',
+        from: user,
+        to,
+        text: `🎤 ${transcript}`,
+      }))
+    }
+  }
+
   const sendMessage = () => {
     if (!input.trim() || !ws.current) return
     ws.current.send(JSON.stringify({
@@ -107,36 +218,75 @@ function getDeviceId() {
     setInput("")
   }
 
-  if (showPrompt) {
+  if (showUserRegistration) {
     return (
-      <div className="flex items-center justify-center h-screen bg-background">
-        <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-xl p-6 w-full max-w-xs flex flex-col gap-4 border border-border">
-          <h2 className="text-lg font-semibold text-center">Enter your name to join the chat</h2>
-          <Input
-            autoFocus
-            placeholder="Your name..."
-            value={nameInput}
-            onChange={e => setNameInput(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === 'Enter' && nameInput.trim()) {
-                localStorage.setItem('chat-username', nameInput.trim())
-                setUser(nameInput.trim())
-                setShowPrompt(false)
-              }
-            }}
-          />
-          <Button
-            disabled={!nameInput.trim()}
-            onClick={() => {
-              if (nameInput.trim()) {
-                localStorage.setItem('chat-username', nameInput.trim())
-                setUser(nameInput.trim())
-                setShowPrompt(false)
-              }
-            }}
-          >
-            Join Chat
-          </Button>
+      <div className="flex items-center justify-center min-h-screen bg-background p-4">
+        <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-xl p-6 w-full max-w-md border border-border">
+          <h2 className="text-xl font-semibold text-center mb-6">Join the Chat</h2>
+          <p className="text-sm text-muted-foreground text-center mb-6">
+            Please provide your information to start chatting with Kamogelo
+          </p>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium mb-1 block">Full Name *</label>
+              <Input
+                placeholder="John Doe"
+                value={userInfo.name}
+                onChange={e => setUserInfo(prev => ({ ...prev, name: e.target.value }))}
+                className={registrationErrors.some(e => e.includes('Name')) ? 'border-red-500' : ''}
+              />
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium mb-1 block">Email Address *</label>
+              <Input
+                type="email"
+                placeholder="john@example.com"
+                value={userInfo.email}
+                onChange={e => setUserInfo(prev => ({ ...prev, email: e.target.value }))}
+                className={registrationErrors.some(e => e.includes('email')) ? 'border-red-500' : ''}
+              />
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium mb-1 block">Phone Number *</label>
+              <Input
+                placeholder="+1 (555) 123-4567"
+                value={userInfo.phone}
+                onChange={e => setUserInfo(prev => ({ ...prev, phone: e.target.value }))}
+                className={registrationErrors.some(e => e.includes('phone')) ? 'border-red-500' : ''}
+              />
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium mb-1 block">Company/Organization *</label>
+              <Input
+                placeholder="Acme Corp"
+                value={userInfo.company}
+                onChange={e => setUserInfo(prev => ({ ...prev, company: e.target.value }))}
+                className={registrationErrors.some(e => e.includes('Company')) ? 'border-red-500' : ''}
+              />
+            </div>
+            
+            {registrationErrors.length > 0 && (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+                <ul className="text-sm text-red-600 dark:text-red-400 space-y-1">
+                  {registrationErrors.map((error, index) => (
+                    <li key={index}>• {error}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
+            <Button
+              onClick={registerUser}
+              className="w-full"
+              disabled={!userInfo.name || !userInfo.email || !userInfo.phone || !userInfo.company}
+            >
+              Start Chatting
+            </Button>
+          </div>
         </div>
       </div>
     )
@@ -153,7 +303,19 @@ function getDeviceId() {
         `}</style>
         <h1 className="text-xl font-bold tracking-tight">Chat</h1>
         <div className="flex gap-2 items-center justify-end w-auto">
-          {/* Center icons in buttons using flex */}
+          {/* Admin phonebook button */}
+          {isAdmin && (
+            <button
+              className="p-1 rounded-full bg-green-500 hover:bg-green-600 transition flex items-center justify-center"
+              aria-label="View Phonebook"
+              onClick={() => setShowPhonebook(true)}
+              style={{ width: 32, height: 32 }}
+            >
+              <Phone size={16} className="text-white mx-auto" />
+            </button>
+          )}
+          
+          {/* Admin login button */}
           <button
             className="p-1 rounded-full bg-blue-500 hover:bg-blue-600 transition flex items-center justify-center"
             aria-label="Admin Login"
@@ -162,11 +324,14 @@ function getDeviceId() {
           >
             <UserCog size={16} className="text-white mx-auto" />
           </button>
+          
+          {/* Exit button */}
           <button
             className="ml-2 p-1 rounded-full bg-red-500 hover:bg-red-600 transition flex items-center justify-center"
             aria-label="Exit Chat"
             onClick={() => {
               setUser("");
+              setIsAdmin(false);
               localStorage.removeItem('chat-username');
               window.location.href = "/";
             }}
@@ -191,10 +356,11 @@ function getDeviceId() {
               <Button
                 className="flex-1"
                 onClick={() => {
-                  if (adminPassword === "2255") { // Changed password as requested
+                  if (adminPassword === "2255") {
                     setIsAdmin(true);
                     setShowAdminLogin(false);
                     setUser("Admin");
+                    setShowUserRegistration(false);
                   }
                 }}
               >Login</Button>
@@ -206,6 +372,71 @@ function getDeviceId() {
           </div>
         </div>
       )}
+      
+      {/* Phonebook Modal */}
+      {showPhonebook && isAdmin && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-xl w-full max-w-4xl max-h-[80vh] overflow-hidden border border-border">
+            <div className="flex items-center justify-between p-4 border-b border-border">
+              <h2 className="text-lg font-bold">User Phonebook</h2>
+              <Button variant="ghost" size="sm" onClick={() => setShowPhonebook(false)}>
+                <X size={16} />
+              </Button>
+            </div>
+            
+            <div className="overflow-y-auto max-h-[calc(80vh-120px)] p-4">
+              {phonebook.length === 0 ? (
+                <div className="text-center text-muted-foreground py-8">
+                  <p>No registered users yet.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {phonebook.map((entry) => (
+                    <div key={entry.id} className="bg-muted/50 rounded-lg p-4 border border-border">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <h3 className="font-semibold text-lg">{entry.name}</h3>
+                          <p className="text-sm text-muted-foreground">{entry.company}</p>
+                        </div>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">Email:</span>
+                            <a href={`mailto:${entry.email}`} className="text-blue-600 hover:underline">
+                              {entry.email}
+                            </a>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">Phone:</span>
+                            <a href={`tel:${entry.phone}`} className="text-blue-600 hover:underline">
+                              {entry.phone}
+                            </a>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">Joined:</span>
+                            <span className="text-muted-foreground">
+                              {new Date(entry.joinedAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            <div className="border-t border-border p-4">
+              <div className="flex justify-between items-center text-sm text-muted-foreground">
+                <span>Total registered users: {phonebook.length}</span>
+                <Button variant="outline" onClick={() => setShowPhonebook(false)}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <div className="flex flex-1 overflow-hidden flex-col min-h-0">
         {/* Chat list panel - collapsed on mobile */}
         <div className="w-full border-b border-border p-2 sm:p-4 overflow-y-auto bg-background shrink-0">
@@ -335,6 +566,11 @@ function getDeviceId() {
           </div>
         </div>
       </div>
+      
+      {/* Floating Voice Assistant */}
+      {user && !showUserRegistration && (
+        <FloatingVoiceAssistant onTranscript={handleVoiceTranscript} />
+      )}
     </div>
   )
 }
