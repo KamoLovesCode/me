@@ -10,6 +10,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import FloatingVoiceAssistant from "@/components/FloatingVoiceAssistant"
 
+// Import the peer chat system
+let PeerChatSystem: any = null;
+if (typeof window !== 'undefined') {
+  PeerChatSystem = require('@/lib/peer-chat').default;
+}
+
 
 interface Message {
   id: number;
@@ -42,8 +48,10 @@ export default function ChatPage() {
   const [user, setUser] = useState<string>("")
   const [to, setTo] = useState<string>('all')
   const [nameInput, setNameInput] = useState("")
-  const ws = useRef<WebSocket | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  
+  // Peer chat system
+  const chatSystem = useRef<any>(null)
   
   // User color assignment
   const [userColor, setUserColor] = useState<string>("")
@@ -159,6 +167,42 @@ export default function ChatPage() {
     setUser(newUser.name)
     setUserColor(assignedColor)
     setShowUserRegistration(false)
+    
+    // Initialize peer chat system
+    if (typeof window !== 'undefined' && PeerChatSystem) {
+      chatSystem.current = new PeerChatSystem()
+      
+      // Set up event handlers
+      chatSystem.current.onNewMessage = (message: Message) => {
+        setMessages(prev => [...prev, message])
+      }
+      
+      chatSystem.current.onUsersUpdate = (users: any[]) => {
+        setOnlineUsers(users)
+        setUsers(users.map(u => u.name))
+      }
+      
+      chatSystem.current.onPermissionRequest = (from: string, text: string, requestId?: string) => {
+        setCurrentRequest({ from, message: text, id: requestId || Date.now().toString() })
+        setShowPermissionDialog(true)
+      }
+      
+      chatSystem.current.onPermissionGranted = (from: string) => {
+        setAllowedContacts(prev => [...prev, from])
+      }
+      
+      // Join the chat system
+      const onlineUsersList = chatSystem.current.join(newUser.name, assignedColor, newUser.email, newUser.phone)
+      setOnlineUsers(onlineUsersList)
+      setUsers(onlineUsersList.map(u => u.name))
+      
+      // Load existing messages
+      const existingMessages = chatSystem.current.getMessages()
+      setMessages(existingMessages)
+      
+      // Start heartbeat
+      chatSystem.current.startHeartbeat()
+    }
   }
 
   // Load chat history for this user from localStorage - but always require re-registration
@@ -169,64 +213,16 @@ export default function ChatPage() {
     setShowUserRegistration(true)
   }, [])
 
-  // Connect to WebSocket server
+  // Connect to Peer Chat System
   useEffect(() => {
-    if (!user) return
-    ws.current = new window.WebSocket('ws://localhost:3002')
-    ws.current.onopen = () => {
-      ws.current?.send(JSON.stringify({ type: 'join', user, color: userColor }))
-    }
-    ws.current.onmessage = (event) => {
-      const data = JSON.parse(event.data)
-      if (data.type === 'users') {
-        setUsers(data.users)
-        setOnlineUsers(data.usersWithDetails || [])
-      } else if (data.type === 'message') {
-        // Check if user is allowed to receive messages from sender
-        if (data.to !== 'all' && data.to === user && !allowedContacts.includes(data.from)) {
-          // Show permission request
-          const requestId = Date.now().toString()
-          setCurrentRequest({ from: data.from, message: data.text, id: requestId })
-          setShowPermissionDialog(true)
-          setPendingRequests(prev => [...prev, { ...data, id: requestId }])
-          return
-        }
-        
-        setMessages(prev => {
-          const updated = [...prev, {
-            id: data.time || Date.now(),
-            text: data.text,
-            from: data.from,
-            to: data.to,
-            time: data.time,
-          }];
-          // Save chat history for this user
-          localStorage.setItem(`chat-history-${user}`, JSON.stringify(updated))
-          return updated
-        })
-      } else if (data.type === 'permission-granted') {
-        // Handle permission granted, allow pending message
-        const pendingMsg = pendingRequests.find(req => req.id === data.requestId)
-        if (pendingMsg) {
-          setMessages(prev => {
-            const updated = [...prev, {
-              id: Date.now(),
-              text: pendingMsg.message,
-              from: pendingMsg.from,
-              to: pendingMsg.to,
-              time: Date.now(),
-            }];
-            localStorage.setItem(`chat-history-${user}`, JSON.stringify(updated))
-            return updated
-          })
-          setPendingRequests(prev => prev.filter(req => req.id !== data.requestId))
-        }
+    // Cleanup function
+    return () => {
+      if (chatSystem.current) {
+        chatSystem.current.leave()
+        chatSystem.current = null
       }
     }
-    return () => {
-      ws.current?.close()
-    }
-  }, [user, userColor, allowedContacts])
+  }, [user])
 
   useEffect(() => {
     // Always scroll to bottom on new message, even if not focused
@@ -246,45 +242,21 @@ export default function ChatPage() {
   }
 
   const sendMessage = () => {
-    if (!input.trim() || !ws.current) return
+    if (!input.trim() || !chatSystem.current) return
     
-    // Check if sending to specific user who hasn't granted permission
-    if (to !== 'all' && !allowedContacts.includes(to) && to !== 'Admin') {
-      // Send permission request first
-      ws.current.send(JSON.stringify({
-        type: 'permission-request',
-        from: user,
-        to,
-        text: input,
-      }))
-    } else {
-      // Send message normally
-      ws.current.send(JSON.stringify({
-        type: 'message',
-        from: user,
-        to,
-        text: input,
-      }))
+    const success = chatSystem.current.sendMessage(to, input)
+    if (success) {
+      setInput("")
     }
-    setInput("")
   }
 
   const handlePermissionResponse = (granted: boolean) => {
-    if (currentRequest && granted) {
-      const updatedContacts = [...allowedContacts, currentRequest.from]
-      setAllowedContacts(updatedContacts)
-      localStorage.setItem(`allowed-contacts-${user}`, JSON.stringify(updatedContacts))
+    if (currentRequest && chatSystem.current) {
+      chatSystem.current.handlePermissionResponse(currentRequest.from, granted, currentRequest.id)
       
-      // Send permission granted message back
-      ws.current?.send(JSON.stringify({
-        type: 'permission-granted',
-        from: user,
-        to: currentRequest.from,
-        requestId: currentRequest.id
-      }))
-    } else if (currentRequest) {
-      // Remove pending request
-      setPendingRequests(prev => prev.filter(req => req.id !== currentRequest.id))
+      if (granted) {
+        setAllowedContacts(prev => [...prev, currentRequest.from])
+      }
     }
     
     setShowPermissionDialog(false)
