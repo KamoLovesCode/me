@@ -264,7 +264,6 @@ export default function ChatPage() {
 
   const sendMessage = () => {
     if (!input.trim()) return
-    
     if (chatSystem.current) {
       try {
         const success = chatSystem.current.sendMessage(to, input)
@@ -298,6 +297,47 @@ export default function ChatPage() {
       setMessages(prev => [...prev, fallbackMessage])
       setInput("")
     }
+  }
+
+  // Gemini audio reply logic
+  const [isGeminiLoading, setIsGeminiLoading] = useState(false);
+  const geminiAudioReply = async () => {
+    if (!input.trim()) return;
+    setIsGeminiLoading(true);
+    try {
+      // Use fetch to call Gemini API (replace with your endpoint and key)
+      const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+      const model = 'models/gemini-2.5-flash-preview-native-audio-dialog';
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const body = {
+        contents: [{ role: 'user', parts: [{ text: input }]}],
+        generationConfig: {
+          responseMimeType: 'audio/wav',
+          responseModality: 'AUDIO',
+        },
+      };
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error('Failed to fetch Gemini audio');
+      const data = await res.json();
+      // Find audio base64 in response
+      const audioBase64 = data?.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
+      if (audioBase64) {
+        const audioBlob = new Blob([Uint8Array.from(atob(audioBase64), c => c.charCodeAt(0))], { type: 'audio/wav' });
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const audio = new Audio(audioUrl);
+        audio.play();
+      } else {
+        alert('No audio reply received.');
+      }
+    } catch (err) {
+      alert('Error with Gemini audio reply.');
+      console.error(err);
+    }
+    setIsGeminiLoading(false);
   }
 
   const handlePermissionResponse = (granted: boolean) => {
@@ -840,12 +880,27 @@ export default function ChatPage() {
           {/* Desktop Message Input */}
           <div className="border-t border-gray-800 bg-black p-6">
             <form onSubmit={e => { e.preventDefault(); sendMessage(); }} className="flex items-end space-x-4">
+              {/* Gemini Audio Button on the left */}
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-10 w-10 p-0 rounded-full hover:bg-gray-600 mr-2 flex-shrink-0"
+                onClick={geminiAudioReply}
+                disabled={isGeminiLoading || !input.trim()}
+                aria-label="Gemini Audio Reply"
+              >
+                {isGeminiLoading ? (
+                  <span className="animate-spin">🔊</span>
+                ) : (
+                  <span>🔊</span>
+                )}
+              </Button>
               {isAdmin && (
                 <Avatar className="w-10 h-10 flex-shrink-0">
                   <AvatarImage src="/kamogelo-photo.jpg" alt="Admin" />
                 </Avatar>
               )}
-              
               <div className="flex-1 relative">
                 <div className="bg-gray-800 rounded-2xl border border-gray-700 p-4">
                   <Input
