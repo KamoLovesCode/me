@@ -148,21 +148,17 @@ function getDeviceId() {
           }
         `}</style>
         <h1 className="text-xl font-semibold">Chat</h1>
-        <div className="flex gap-2 items-center">
-          <button
-            className="text-xs text-red-500 border border-red-500 rounded px-2 py-1 hover:bg-red-50 dark:hover:bg-zinc-900 transition"
-            onClick={() => {
-              setUser("");
-              localStorage.removeItem('chat-username');
-              window.location.href = "/";
-            }}
-          >
-            Exit Chat
-          </button>
-          <Link href="/">
-            <X size={24} className="text-muted-foreground hover:text-foreground cursor-pointer" />
-          </Link>
-        </div>
+        <button
+          className="ml-2 p-1 rounded-full bg-red-500 hover:bg-red-600 transition"
+          aria-label="Exit Chat"
+          onClick={() => {
+            setUser("");
+            localStorage.removeItem('chat-username');
+            window.location.href = "/";
+          }}
+        >
+          <X size={24} className="text-white" />
+        </button>
       </header>
       <div className="flex flex-1 overflow-hidden flex-col md:flex-row min-h-0">
         {/* Chat list panel */}
@@ -207,6 +203,7 @@ function getDeviceId() {
                     className={`relative w-full max-w-[90vw] md:max-w-md p-2 rounded-lg break-words overflow-x-auto
                       ${msg.from === user
                         ? 'bg-primary text-primary-foreground rounded-br-none'
+  const isUsernameTaken = (name: string) => users.includes(name.trim());
                         : 'bg-white text-gray-900 dark:bg-zinc-800 dark:text-gray-100 border border-gray-200 dark:border-zinc-700 rounded-bl-none'}`}
                     style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
                   >
