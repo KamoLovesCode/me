@@ -737,14 +737,14 @@ if __name__ == "__main__":
                     </CardHeader>
                     <CardContent className="flex-grow pb-3">
                       <p className="text-sm text-muted-foreground mb-4 line-clamp-3">{repo.description}</p>
-                      <div className="flex flex-wrap gap-1 mb-4">
+                      <div className="flex flex-wrap gap-2 mb-4 max-w-full">
                         {repo.topics.slice(0, 3).map((topic) => (
-                          <Badge key={topic} variant="secondary" className="text-xs">
+                          <Badge key={topic} variant="secondary" className="text-xs whitespace-nowrap px-2 py-1">
                             {topic}
                           </Badge>
                         ))}
                         {repo.topics.length > 3 && (
-                          <Badge variant="secondary" className="text-xs">
+                          <Badge variant="secondary" className="text-xs whitespace-nowrap px-2 py-1">
                             +{repo.topics.length - 3}
                           </Badge>
                         )}
@@ -796,7 +796,7 @@ if __name__ == "__main__":
                 >
                   <h4 className="text-lg sm:text-xl font-semibold mb-4">{repo.name}</h4>
                   <CodeSnippet
-                    code={codeSnippets[repo.name] || "// Code snippet not available"}
+                    code={codeSnippets[repo.name as keyof typeof codeSnippets] || "// Code snippet not available"}
                     language={repo.language.toLowerCase()}
                   />
                 </motion.div>

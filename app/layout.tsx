@@ -6,6 +6,8 @@ import { ThemeProvider } from "@/components/theme-provider"
 import AnalyticsTracker from "@/components/analytics-tracker"
 import { Toaster } from "@/components/ui/toaster"
 import { Suspense } from "react"
+import ScrollToTop from "@/components/scroll-to-top"
+import ChatSheet from "@/components/chat/ChatSheet"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -70,9 +72,9 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode
-}>) {
+}) {
   return (
     <html lang="en" suppressHydrationWarning className={`${inter.variable} ${poppins.variable}`}>
       <head>
@@ -92,6 +94,8 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <Suspense>
             <AnalyticsTracker />
+            <ScrollToTop />
+            <ChatSheet />
             {children}
           </Suspense>
           <Toaster />

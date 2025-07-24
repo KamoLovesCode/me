@@ -139,6 +139,22 @@ export default function Contact() {
         </motion.div>
 
         <div className="flex flex-col items-center min-h-[400px] relative">
+          {/* Section tabs */}
+          <div className="mb-6 flex gap-4 justify-center">
+            <Button
+              variant={sectionIndex === 0 ? "default" : "outline"}
+              onClick={() => setSectionIndex(0)}
+            >
+              Chat
+            </Button>
+            <Button
+              variant={sectionIndex === 1 ? "default" : "outline"}
+              onClick={() => setSectionIndex(1)}
+            >
+              Contact Info
+            </Button>
+          </div>
+
           <AnimatePresence mode="wait" initial={false}>
             {sectionIndex === 0 && (
               <motion.div
@@ -345,29 +361,6 @@ export default function Contact() {
               </motion.div>
             )}
           </AnimatePresence>
-          {/* Navigation buttons */}
-          <motion.div 
-            className="flex gap-4 mt-8"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 0.5 }}
-          >
-            <Button
-              variant="outline"
-              onClick={() => setSectionIndex(i => Math.max(0, i - 1))}
-              disabled={sectionIndex === 0}
-              className="px-6 shadow-sm hover:shadow-md transition-shadow duration-200"
-            >
-              Back
-            </Button>
-            <Button
-              onClick={() => setSectionIndex(i => Math.min(SECTIONS.length - 1, i + 1))}
-              disabled={sectionIndex === SECTIONS.length - 1}
-              className="px-6 shadow-sm hover:shadow-md transition-shadow duration-200 bg-gradient-to-r from-primary to-primary/90"
-            >
-              Next
-            </Button>
-          </motion.div>
         </div>
       </div>
     </section>

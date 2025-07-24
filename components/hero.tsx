@@ -45,7 +45,7 @@ export default function Hero() {
             size="lg"
             variant="outline"
             className="w-full sm:w-auto text-base py-3 px-6 bg-transparent"
-            onClick={() => document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" })}
+            onClick={() => window.open('https://wa.me/27698439670?text=Hi%20Kamogelo%2C%20I%20found%20your%20portfolio%20and%20would%20like%20to%20connect!', '_blank')}
           >
             Contact Me
           </Button>

@@ -9,7 +9,6 @@ const sections = [
   { id: "about", label: "About", icon: User },
   { id: "experience", label: "Experience", icon: Briefcase },
   { id: "projects", label: "Projects", icon: Code },
-  { id: "contact", label: "Contact", icon: Mail },
 ]
 
 export default function SectionNavigator() {
