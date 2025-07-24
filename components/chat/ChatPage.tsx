@@ -203,11 +203,13 @@ function getDeviceId() {
                     className={`relative w-full max-w-[90vw] md:max-w-md p-2 rounded-lg break-words overflow-x-auto
                       ${msg.from === user
                         ? 'bg-primary text-primary-foreground rounded-br-none'
-  const isUsernameTaken = (name: string) => users.includes(name.trim());
                         : 'bg-white text-gray-900 dark:bg-zinc-800 dark:text-gray-100 border border-gray-200 dark:border-zinc-700 rounded-bl-none'}`}
                     style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
                   >
-                    <span className={`block text-xs font-semibold mb-1 opacity-80 ${msg.from === user ? 'text-primary-foreground' : 'text-primary'}`}>{msg.from === user ? 'You' : msg.from}</span>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className={`block text-xs font-semibold opacity-80 ${msg.from === user ? 'text-primary-foreground' : 'text-primary'}`}>{msg.from === user ? 'You' : msg.from}</span>
+                      <span className="block text-[10px] text-muted-foreground ml-2">{msg.time ? new Date(msg.time).toLocaleTimeString() : ''}</span>
+                    </div>
                     <span className="block text-base">{msg.text}</span>
                   </div>
                 </div>
