@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { MessageCircle, X } from 'lucide-react'
+import { MessageCircle, X, UserCog } from 'lucide-react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -16,6 +17,9 @@ interface Message {
 }
 
 export default function ChatPage() {
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [showAdminLogin, setShowAdminLogin] = useState(false)
+  const [adminPassword, setAdminPassword] = useState("")
   // Chat state
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
@@ -147,18 +151,58 @@ function getDeviceId() {
             .chat-sheet-icon { display: none !important; }
           }
         `}</style>
-        <h1 className="text-xl font-semibold">Chat</h1>
-        <button
-          className="ml-2 p-1 rounded-full bg-red-500 hover:bg-red-600 transition"
-          aria-label="Exit Chat"
-          onClick={() => {
-            setUser("");
-            localStorage.removeItem('chat-username');
-            window.location.href = "/";
-          }}
-        >
-          <X size={24} className="text-white" />
-        </button>
+        <h1 className="text-xl font-bold tracking-tight">Chat</h1>
+        <div className="flex gap-2 items-center">
+          <button
+            className="p-1 rounded-full bg-blue-500 hover:bg-blue-600 transition"
+            aria-label="Admin Login"
+            onClick={() => setShowAdminLogin(true)}
+          >
+            <UserCog size={22} className="text-white" />
+          </button>
+          <button
+            className="ml-2 p-1 rounded-full bg-red-500 hover:bg-red-600 transition"
+            aria-label="Exit Chat"
+            onClick={() => {
+              setUser("");
+              localStorage.removeItem('chat-username');
+              window.location.href = "/";
+            }}
+          >
+            <X size={24} className="text-white" />
+          </button>
+        </div>
+      </header>
+      {showAdminLogin && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-xl p-6 w-full max-w-xs flex flex-col gap-4 border border-border">
+            <h2 className="text-lg font-bold text-center">Admin Login</h2>
+            <Input
+              type="password"
+              placeholder="Enter admin password"
+              value={adminPassword}
+              onChange={e => setAdminPassword(e.target.value)}
+              autoFocus
+            />
+            <div className="flex gap-2">
+              <Button
+                className="flex-1"
+                onClick={() => {
+                  if (adminPassword === "admin123") { // Change password as needed
+                    setIsAdmin(true);
+                    setShowAdminLogin(false);
+                    setUser("Admin");
+                  }
+                }}
+              >Login</Button>
+              <Button variant="outline" className="flex-1" onClick={() => setShowAdminLogin(false)}>Cancel</Button>
+            </div>
+            {adminPassword && adminPassword !== "admin123" && (
+              <span className="text-xs text-red-500 text-center">Incorrect password</span>
+            )}
+          </div>
+        </div>
+      )}
       </header>
       <div className="flex flex-1 overflow-hidden flex-col md:flex-row min-h-0">
         {/* Chat list panel */}
@@ -197,20 +241,20 @@ function getDeviceId() {
               .map(msg => (
                 <div
                   key={msg.id}
-                  className={`flex flex-col w-full ${msg.from === user ? 'items-end' : 'items-start'}`}
+                  className={`flex flex-col w-full ${msg.from === user || msg.from === "Admin" ? 'items-end' : 'items-start'}`}
                 >
                   <div
                     className={`relative w-full max-w-[90vw] md:max-w-md p-2 rounded-lg break-words overflow-x-auto
-                      ${msg.from === user
+                      ${msg.from === user || msg.from === "Admin"
                         ? 'bg-primary text-primary-foreground rounded-br-none'
                         : 'bg-white text-gray-900 dark:bg-zinc-800 dark:text-gray-100 border border-gray-200 dark:border-zinc-700 rounded-bl-none'}`}
-                    style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
+                    style={{ wordBreak: 'break-word', overflowWrap: 'anywhere', fontFamily: 'Inter, sans-serif', fontWeight: msg.from === user || msg.from === "Admin" ? 500 : 400 }}
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <span className={`block text-xs font-semibold opacity-80 ${msg.from === user ? 'text-primary-foreground' : 'text-primary'}`}>{msg.from === user ? 'You' : msg.from}</span>
+                      <span className={`block text-xs font-bold opacity-80 flex items-center gap-2 ${msg.from === user || msg.from === "Admin" ? 'text-primary-foreground' : 'text-primary'}`}>{msg.from === "Admin" ? <Image src="/kamogelo-photo.jpg" alt="Admin" width={22} height={22} className="rounded-full border border-primary" /> : null}{msg.from === user ? 'You' : msg.from}</span>
                       <span className="block text-[10px] text-muted-foreground ml-2">{msg.time ? new Date(msg.time).toLocaleTimeString() : ''}</span>
                     </div>
-                    <span className="block text-base">{msg.text}</span>
+                    <span className="block text-base font-medium" style={{ fontWeight: 500 }}>{msg.text}</span>
                   </div>
                 </div>
               ))}
@@ -221,17 +265,20 @@ function getDeviceId() {
              style={{ background: 'inherit' }}
              onSubmit={e => { e.preventDefault(); sendMessage(); }}
            >
+             {isAdmin && (
+               <Image src="/kamogelo-photo.jpg" alt="Admin" width={32} height={32} className="rounded-full border border-primary" />
+             )}
              <Input
                type="text"
                value={input}
                onChange={e => setInput(e.target.value)}
                onKeyDown={e => e.key === 'Enter' && sendMessage()}
-               placeholder="Type a message..."
-               className="flex-1 min-w-0"
+               placeholder={isAdmin ? "Send a message to users..." : "Type a message..."}
+               className="flex-1 min-w-0 font-medium"
                autoComplete="off"
-               style={{ minHeight: 40, fontSize: 16 }}
+               style={{ minHeight: 40, fontSize: 16, fontWeight: 500 }}
              />
-             <Button type="submit" style={{ minHeight: 40, fontSize: 16 }}>
+             <Button type="submit" style={{ minHeight: 40, fontSize: 16, fontWeight: 600 }}>
                Send
              </Button>
            </form>
