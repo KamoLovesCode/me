@@ -12,6 +12,7 @@ interface CodeSnippetProps {
 
 export default function CodeSnippet({ code, language }: CodeSnippetProps) {
   const [copied, setCopied] = useState(false)
+  const [open, setOpen] = useState(false)
 
   const copyToClipboard = async () => {
     await navigator.clipboard.writeText(code)
@@ -23,28 +24,35 @@ export default function CodeSnippet({ code, language }: CodeSnippetProps) {
     <div className="relative rounded-lg overflow-hidden mb-8">
       <div className="flex items-center justify-between px-4 py-2 bg-muted">
         <div className="text-sm font-mono">{language}</div>
-        <Button variant="ghost" size="sm" onClick={copyToClipboard} className="h-8 gap-1 text-xs">
-          {copied ? (
-            <>
-              <Check className="h-3.5 w-3.5" />
-              <span>Copied!</span>
-            </>
-          ) : (
-            <>
-              <Copy className="h-3.5 w-3.5" />
-              <span>Copy</span>
-            </>
-          )}
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="ghost" size="sm" onClick={() => setOpen(o => !o)} className="h-8 gap-1 text-xs">
+            {open ? "Hide Code" : "Show Code"}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={copyToClipboard} className="h-8 gap-1 text-xs">
+            {copied ? (
+              <>
+                <Check className="h-3.5 w-3.5" />
+                <span>Copied!</span>
+              </>
+            ) : (
+              <>
+                <Copy className="h-3.5 w-3.5" />
+                <span>Copy</span>
+              </>
+            )}
+          </Button>
+        </div>
       </div>
-      <pre
-        className={cn(
-          "p-4 overflow-x-auto text-sm font-mono bg-muted/50",
-          "border border-muted-foreground/20 rounded-b-lg",
-        )}
-      >
-        <code>{code}</code>
-      </pre>
+      {open && (
+        <pre
+          className={cn(
+            "p-4 overflow-x-auto text-sm font-mono bg-muted/50",
+            "border border-muted-foreground/20 rounded-b-lg",
+          )}
+        >
+          <code>{code}</code>
+        </pre>
+      )}
     </div>
   )
 }
