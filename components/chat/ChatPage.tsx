@@ -16,6 +16,7 @@ interface Message {
 }
 
 export default function ChatPage() {
+  // Chat state
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [users, setUsers] = useState<string[]>([])
@@ -25,6 +26,11 @@ export default function ChatPage() {
   const [nameInput, setNameInput] = useState("")
   const ws = useRef<WebSocket | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  // Topic state for details pane
+  const [topic, setTopic] = useState("");
+  const [showTopicInput, setShowTopicInput] = useState(false);
+  const [topicInput, setTopicInput] = useState("");
 
   // Load chat history for this user from localStorage
   useEffect(() => {
@@ -280,10 +286,6 @@ function getDeviceId() {
             </div>
           </div>
         </div>
-// Topic state for details pane
-const [topic, setTopic] = useState("");
-const [showTopicInput, setShowTopicInput] = useState(false);
-const [topicInput, setTopicInput] = useState("");
       </div>
     </div>
   )
