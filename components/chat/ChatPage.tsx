@@ -230,14 +230,9 @@ export default function ChatPage() {
   }, [messages]);
 
   const handleVoiceTranscript = (transcript: string) => {
-    // Add the voice transcript as a message from the user
-    if (ws.current && user) {
-      ws.current.send(JSON.stringify({
-        type: 'message',
-        from: user,
-        to,
-        text: `🎤 ${transcript}`,
-      }))
+    // Add the voice transcript as a message
+    if (chatSystem.current && user) {
+      chatSystem.current.sendMessage(to, `🎤 ${transcript}`)
     }
   }
 
