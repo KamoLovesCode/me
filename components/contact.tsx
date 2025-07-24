@@ -138,18 +138,22 @@ export default function Contact() {
           </motion.p>
         </motion.div>
 
-        <div className="flex flex-col items-center min-h-[400px] relative">
+        <div className="flex flex-col items-center min-h-[400px] relative pb-safe">
           {/* Section tabs */}
-          <div className="mb-6 flex gap-4 justify-center">
+          <div className="mb-4 sm:mb-6 flex gap-2 sm:gap-4 justify-center">
             <Button
               variant={sectionIndex === 0 ? "default" : "outline"}
               onClick={() => setSectionIndex(0)}
+              size="sm"
+              className="text-sm"
             >
               Chat
             </Button>
             <Button
               variant={sectionIndex === 1 ? "default" : "outline"}
               onClick={() => setSectionIndex(1)}
+              size="sm"
+              className="text-sm"
             >
               Contact Info
             </Button>
@@ -166,7 +170,7 @@ export default function Contact() {
                 className="w-full flex justify-center absolute"
               >
                 <Card className="w-full max-w-md shadow-xl border-0 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm">
-                  <CardContent className="p-0 flex flex-col h-[500px]">
+                  <CardContent className="p-0 flex flex-col h-[500px] sm:h-[500px] max-h-[70vh]">
                     {/* Chat header */}
                     <motion.div
                       initial={{ opacity: 0, y: -30 }}
@@ -183,7 +187,7 @@ export default function Contact() {
                       </div>
                     </motion.div>
                     {/* Chat messages */}
-                    <div ref={chatContainerRef} className="flex-1 overflow-y-auto bg-gradient-to-b from-muted/5 to-muted/10 p-4">
+                    <div ref={chatContainerRef} className="flex-1 overflow-y-auto bg-gradient-to-b from-muted/5 to-muted/10 p-2 sm:p-4 min-h-0">
                       {messages.length === 0 && (
                         <motion.div
                           initial={{ opacity: 0, scale: 0.95 }}
@@ -244,14 +248,14 @@ export default function Contact() {
                       initial={{ opacity: 0, y: 30 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.4, delay: 0.1 }}
-                      className="p-3 border-t flex gap-2 bg-white dark:bg-zinc-900"
+                      className="p-2 sm:p-3 border-t flex gap-2 bg-white dark:bg-zinc-900 shrink-0"
                     >
                       <Input
                         value={inputMessage}
                         onChange={(e) => setInputMessage(e.target.value)}
                         placeholder="Type your message..."
-                        className="flex-1"
-                        autoFocus
+                        className="flex-1 text-sm sm:text-base"
+                        autoFocus={false}
                       />
                       <Button 
                         type="submit" 

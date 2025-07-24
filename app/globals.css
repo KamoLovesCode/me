@@ -207,3 +207,55 @@ html {
   font-weight: 600;
   font-display: swap;
 }
+
+/* Mobile viewport and safe area handling */
+@supports (padding: env(safe-area-inset-top)) {
+  .safe-area-inset {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  
+  .pb-safe {
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
+}
+
+/* Prevent mobile zooming on input focus */
+@media screen and (max-width: 768px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+  
+  /* Ensure mobile chat interface doesn't scroll */
+  .mobile-chat {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+  }
+  
+  /* Mobile keyboard safe area */
+  .mobile-input-safe {
+    padding-bottom: max(1rem, env(keyboard-inset-height, 0px));
+  }
+}
+
+/* Prevent overscroll bounce on mobile */
+body {
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Mobile viewport height fix */
+.mobile-viewport {
+  min-height: 100vh;
+  min-height: 100dvh;
+}

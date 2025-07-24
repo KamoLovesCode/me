@@ -7,7 +7,7 @@ import Experience from "@/components/experience"
 import ThemeToggle from "@/components/theme-toggle"
 import SectionNavigator from "@/components/section-navigator"
 import ScrollProgress from "@/components/scroll-progress"
-import GeminiMicButton from "@/components/GeminiMicButton"
+// import GeminiMicButton from "@/components/GeminiMicButton"
 
 export const metadata: Metadata = {
   title: "Kamogelo Mosia | Full-Stack Developer Portfolio",
@@ -21,7 +21,7 @@ export default function Home() {
       <SectionNavigator />
       <div className="fixed top-4 right-4 z-50 flex gap-2">
         <ThemeToggle />
-        <GeminiMicButton />
+        {/* <GeminiMicButton /> */}
       </div>
       <Hero />
       <About />

@@ -143,8 +143,8 @@ function getDeviceId() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background text-foreground overflow-hidden">
-      <header className="p-4 border-b border-border flex items-center justify-between">
+    <div className="flex flex-col h-screen bg-background text-foreground overflow-hidden safe-area-inset">
+      <header className="p-4 border-b border-border flex items-center justify-between shrink-0">
         {/* Hide chat icon on mobile chat page (if present) */}
         <style>{`
           @media (max-width: 640px) {
@@ -206,23 +206,23 @@ function getDeviceId() {
           </div>
         </div>
       )}
-      <div className="flex flex-1 overflow-hidden flex-col md:flex-row min-h-0">
-        {/* Chat list panel */}
-        <div className="w-full md:w-64 border-b md:border-b-0 md:border-r border-border p-4 overflow-y-auto bg-background">
-          <h2 className="text-lg font-semibold mb-4">Active Users</h2>
-          <ul className="space-y-2 flex flex-row md:flex-col flex-wrap md:flex-nowrap">
-            <li className="flex-1 md:flex-none">
+      <div className="flex flex-1 overflow-hidden flex-col min-h-0">
+        {/* Chat list panel - collapsed on mobile */}
+        <div className="w-full border-b border-border p-2 sm:p-4 overflow-y-auto bg-background shrink-0">
+          <h2 className="text-sm sm:text-lg font-semibold mb-2 sm:mb-4">Active Users</h2>
+          <ul className="space-y-1 sm:space-y-2 flex flex-row flex-wrap gap-1 sm:gap-2">
+            <li className="flex-none">
               <button
-                className={`w-full text-left px-2 py-1 rounded ${to === 'all' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
+                className={`text-xs sm:text-sm px-2 py-1 rounded whitespace-nowrap ${to === 'all' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
                 onClick={() => setTo('all')}
               >
                 Everyone
               </button>
             </li>
             {users.filter(u => u !== user).map(u => (
-              <li key={u} className="flex-1 md:flex-none">
+              <li key={u} className="flex-none">
                 <button
-                  className={`w-full text-left px-2 py-1 rounded ${to === u ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
+                  className={`text-xs sm:text-sm px-2 py-1 rounded whitespace-nowrap ${to === u ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
                   onClick={() => setTo(u)}
                 >
                   {u}
@@ -233,7 +233,7 @@ function getDeviceId() {
         </div>
         {/* Messages panel */}
          <div className="flex-1 flex flex-col min-w-0 min-h-0">
-           <div className="flex-1 overflow-y-auto p-2 md:p-4 space-y-2 md:space-y-4 bg-background min-h-0 max-h-full" style={{ overscrollBehavior: 'contain' }}>
+           <div className="flex-1 overflow-y-auto p-2 sm:p-4 space-y-2 sm:space-y-4 bg-background min-h-0 max-h-full pb-safe" style={{ overscrollBehavior: 'contain' }}>
             {messages
               .filter(msg =>
                 to === 'all'
@@ -263,12 +263,12 @@ function getDeviceId() {
             <div ref={messagesEndRef} />
           </div>
            <form
-             className="p-2 md:p-4 border-t border-border bg-background flex gap-2 sticky bottom-0 z-10"
+             className="p-2 sm:p-4 border-t border-border bg-background flex gap-2 sticky bottom-0 z-10 pb-safe shrink-0"
              style={{ background: 'inherit' }}
              onSubmit={e => { e.preventDefault(); sendMessage(); }}
            >
              {isAdmin && (
-               <Image src="/kamogelo-photo.jpg" alt="Admin" width={24} height={24} className="rounded-full border border-primary object-cover" style={{ width: 24, height: 24 }} />
+               <Image src="/kamogelo-photo.jpg" alt="Admin" width={24} height={24} className="rounded-full border border-primary object-cover shrink-0" style={{ width: 24, height: 24 }} />
              )}
              <Input
                type="text"
@@ -276,11 +276,11 @@ function getDeviceId() {
                onChange={e => setInput(e.target.value)}
                onKeyDown={e => e.key === 'Enter' && sendMessage()}
                placeholder={isAdmin ? "Send a message to users..." : "Type a message..."}
-               className="flex-1 min-w-0 font-medium"
+               className="flex-1 min-w-0 font-medium text-base"
                autoComplete="off"
-               style={{ minHeight: 40, fontSize: 16, fontWeight: 500 }}
+               style={{ minHeight: 44, fontSize: 16, fontWeight: 500 }}
              />
-             <Button type="submit" style={{ minHeight: 40, fontSize: 16, fontWeight: 600 }}>
+             <Button type="submit" className="shrink-0" style={{ minHeight: 44, fontSize: 16, fontWeight: 600 }}>
                Send
              </Button>
            </form>
