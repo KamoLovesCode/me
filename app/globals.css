@@ -259,3 +259,71 @@ body {
   min-height: 100vh;
   min-height: 100dvh;
 }
+
+/* Modern chat interface enhancements */
+.chat-container {
+  height: 100vh;
+  height: 100dvh;
+}
+
+@media (max-width: 768px) {
+  .chat-sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-in-out;
+  }
+  
+  .chat-sidebar.open {
+    transform: translateX(0);
+  }
+  
+  /* Enhanced mobile chat bubbles */
+  .message-bubble {
+    max-width: calc(100vw - 100px);
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+  
+  /* Mobile-optimized input */
+  .mobile-input {
+    border-radius: 24px;
+    min-height: 44px;
+    font-size: 16px !important;
+  }
+}
+
+/* Smooth animations for chat interface */
+.message-enter {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: messageSlideIn 0.3s ease-out forwards;
+}
+
+@keyframes messageSlideIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Custom scrollbar for chat */
+.chat-messages::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-messages::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.5);
+  border-radius: 3px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.7);
+}
+
+/* Safe area padding for mobile devices */
+.safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom);
+}

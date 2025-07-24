@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { MessageCircle, X, UserCog, Phone, Search, MoreVertical, Send, Paperclip, Smile, Settings, Users, Hash } from 'lucide-react'
+import { MessageCircle, X, UserCog, Phone, Search, MoreVertical, Send, Paperclip, Smile, Settings, Users, Hash, ArrowLeft } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Input } from "@/components/ui/input"
@@ -295,54 +295,319 @@ function getDeviceId() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background text-foreground overflow-hidden safe-area-inset">
-      <header className="p-4 border-b border-border flex items-center justify-between shrink-0">
-        {/* Hide chat icon on mobile chat page (if present) */}
-        <style>{`
-          @media (max-width: 640px) {
-            .chat-sheet-icon { display: none !important; }
-          }
-        `}</style>
-        <h1 className="text-xl font-bold tracking-tight">Chat</h1>
-        <div className="flex gap-2 items-center justify-end w-auto">
-          {/* Admin phonebook button */}
-          {isAdmin && (
-            <button
-              className="p-1 rounded-full bg-green-500 hover:bg-green-600 transition flex items-center justify-center"
-              aria-label="View Phonebook"
-              onClick={() => setShowPhonebook(true)}
-              style={{ width: 32, height: 32 }}
-            >
-              <Phone size={16} className="text-white mx-auto" />
-            </button>
-          )}
-          
-          {/* Admin login button */}
-          <button
-            className="p-1 rounded-full bg-blue-500 hover:bg-blue-600 transition flex items-center justify-center"
-            aria-label="Admin Login"
-            onClick={() => setShowAdminLogin(true)}
-            style={{ width: 32, height: 32 }}
-          >
-            <UserCog size={16} className="text-white mx-auto" />
-          </button>
-          
-          {/* Exit button */}
-          <button
-            className="ml-2 p-1 rounded-full bg-red-500 hover:bg-red-600 transition flex items-center justify-center"
-            aria-label="Exit Chat"
-            onClick={() => {
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Desktop: Side-by-side layout, Mobile: Stacked layout */}
+      
+      {/* Left Sidebar - Desktop only */}
+      <div className="hidden lg:flex lg:flex-col lg:w-80 xl:w-96 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
+        {/* Sidebar Header */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center space-x-3">
+            <Avatar className="w-10 h-10">
+              <AvatarFallback className="bg-gradient-to-br from-purple-500 to-blue-600 text-white font-semibold">
+                {user.slice(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <h1 className="text-lg font-semibold">{user}</h1>
+              <p className="text-sm text-green-600 dark:text-green-400">● Online</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-1">
+            {isAdmin && (
+              <Button size="sm" variant="ghost" onClick={() => setShowPhonebook(true)}>
+                <Phone size={16} />
+              </Button>
+            )}
+            <Button size="sm" variant="ghost" onClick={() => setShowAdminLogin(true)}>
+              <UserCog size={16} />
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => {
               setUser("");
               setIsAdmin(false);
               localStorage.removeItem('chat-username');
               window.location.href = "/";
-            }}
-            style={{ width: 32, height: 32 }}
-          >
-            <X size={16} className="text-white mx-auto" />
-          </button>
+            }}>
+              <X size={16} />
+            </Button>
+          </div>
         </div>
-      </header>
+
+        {/* Chat Categories */}
+        <div className="p-4">
+          <h2 className="text-2xl font-bold mb-4">Chat</h2>
+          <div className="flex space-x-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+            <button className="flex-1 py-2 px-3 text-sm font-medium bg-white dark:bg-gray-600 text-gray-900 dark:text-white rounded-md shadow-sm">
+              All
+            </button>
+            <button className="flex-1 py-2 px-3 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
+              Work
+            </button>
+            <button className="flex-1 py-2 px-3 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
+              Personal
+            </button>
+          </div>
+        </div>
+
+        {/* Search */}
+        <div className="px-4 pb-4">
+          <div className="relative">
+            <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <Input placeholder="Search conversations" className="pl-10 bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600" />
+          </div>
+        </div>
+
+        {/* Pinned Section */}
+        <div className="px-4 pb-2">
+          <div className="flex items-center text-xs font-medium text-gray-500 dark:text-gray-400 mb-3">
+            <span>📌 Pinned</span>
+          </div>
+        </div>
+
+        {/* Chat List */}
+        <div className="flex-1 overflow-y-auto px-4 pb-4">
+          {/* General Channel - Pinned */}
+          <div 
+            className={`flex items-center p-3 rounded-xl cursor-pointer mb-2 transition-all duration-200 ${
+              to === 'all' 
+                ? 'bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700' 
+                : 'hover:bg-gray-50 dark:hover:bg-gray-700'
+            }`}
+            onClick={() => setTo('all')}
+          >
+            <div className="relative">
+              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-600 rounded-full flex items-center justify-center">
+                <Hash size={20} className="text-white" />
+              </div>
+              {to === 'all' && messages.filter(m => m.to === 'all' || !m.to).length > 0 && (
+                <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+                  <span className="text-xs text-white font-bold">
+                    {messages.filter(m => m.to === 'all' || !m.to).length}
+                  </span>
+                </div>
+              )}
+            </div>
+            <div className="ml-3 flex-1 min-w-0">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">General</p>
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  {messages.filter(m => m.to === 'all' || !m.to).length > 0 && 
+                    new Date(Math.max(...messages.filter(m => m.to === 'all' || !m.to).map(m => m.time || 0))).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                  }
+                </span>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                {messages.filter(m => m.to === 'all' || !m.to).length > 0 
+                  ? messages.filter(m => m.to === 'all' || !m.to).slice(-1)[0].text
+                  : 'No messages yet'
+                }
+              </p>
+            </div>
+          </div>
+
+          {/* Conversations Section */}
+          <div className="mt-6 mb-3">
+            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Conversations</span>
+          </div>
+
+          {/* Individual Users */}
+          {users.filter(u => u !== user).map(u => {
+            const userMessages = messages.filter(m => 
+              (m.from === user && m.to === u) || (m.from === u && m.to === user)
+            );
+            const lastMessage = userMessages.slice(-1)[0];
+            
+            return (
+              <div 
+                key={u}
+                className={`flex items-center p-3 rounded-xl cursor-pointer mb-2 transition-all duration-200 ${
+                  to === u 
+                    ? 'bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700' 
+                    : 'hover:bg-gray-50 dark:hover:bg-gray-700'
+                }`}
+                onClick={() => setTo(u)}
+              >
+                <div className="relative">
+                  <Avatar className="w-12 h-12">
+                    {u === "Admin" ? (
+                      <AvatarImage src="/kamogelo-photo.jpg" alt="Admin" />
+                    ) : (
+                      <AvatarFallback className="bg-gradient-to-br from-green-500 to-blue-500 text-white font-semibold">
+                        {u.slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                  <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-white dark:border-gray-800 rounded-full"></div>
+                  {userMessages.length > 0 && (
+                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+                      <span className="text-xs text-white font-bold">{userMessages.length}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="ml-3 flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">{u}</p>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      {lastMessage && new Date(lastMessage.time || 0).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                    {lastMessage ? lastMessage.text : 'Start a conversation'}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Main Chat Area - Full width on mobile, alongside sidebar on desktop */}
+      <div className="flex-1 flex flex-col min-h-0">
+        {/* Mobile Header (only visible on mobile) */}
+        <div className="lg:hidden bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+          {/* Mobile Top Bar */}
+          <div className="flex items-center justify-between p-4">
+            <div className="flex items-center space-x-3">
+              <Avatar className="w-10 h-10">
+                <AvatarFallback className="bg-gradient-to-br from-purple-500 to-blue-600 text-white font-semibold">
+                  {user.slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <h1 className="text-lg font-semibold">{user}</h1>
+                <p className="text-sm text-green-600 dark:text-green-400">● At work</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-1">
+              <Button size="sm" variant="ghost">
+                <Search size={18} />
+              </Button>
+              <Button size="sm" variant="ghost">
+                <MoreVertical size={18} />
+              </Button>
+            </div>
+          </div>
+
+          {/* Mobile Chat Title */}
+          <div className="px-4 pb-2">
+            <h2 className="text-2xl font-bold mb-3">Chat</h2>
+            <div className="flex space-x-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+              <button className="flex-1 py-2 px-3 text-sm font-medium bg-white dark:bg-gray-600 text-gray-900 dark:text-white rounded-md shadow-sm">
+                All
+              </button>
+              <button className="flex-1 py-2 px-3 text-sm font-medium text-gray-500 dark:text-gray-400">
+                Work
+              </button>
+              <button className="flex-1 py-2 px-3 text-sm font-medium text-gray-500 dark:text-gray-400">
+                Personal
+              </button>
+              <button className="flex-1 py-2 px-3 text-sm font-medium text-gray-500 dark:text-gray-400">
+                Archive
+              </button>
+            </div>
+          </div>
+
+          {/* Mobile Chat List */}
+          <div className="px-4 pb-4">
+            {/* Pinned Section */}
+            <div className="flex items-center text-xs font-medium text-gray-500 dark:text-gray-400 mb-3">
+              <span>📌 Pinned</span>
+            </div>
+
+            {/* General Channel */}
+            <div 
+              className={`flex items-center p-3 rounded-xl cursor-pointer mb-3 ${
+                to === 'all' 
+                  ? 'bg-blue-50 dark:bg-blue-900/30' 
+                  : 'hover:bg-gray-50 dark:hover:bg-gray-700'
+              }`}
+              onClick={() => setTo('all')}
+            >
+              <div className="relative">
+                <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-orange-500 rounded-full flex items-center justify-center">
+                  <Hash size={20} className="text-white" />
+                </div>
+                <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+                  <span className="text-xs text-white font-bold">3</span>
+                </div>
+              </div>
+              <div className="ml-3 flex-1">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white">General</p>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">9:41 AM</span>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Wanna lunch with me?</p>
+              </div>
+            </div>
+
+            {/* Individual Users */}
+            {users.filter(u => u !== user).map(u => (
+              <div 
+                key={u}
+                className={`flex items-center p-3 rounded-xl cursor-pointer mb-3 ${
+                  to === u 
+                    ? 'bg-blue-50 dark:bg-blue-900/30' 
+                    : 'hover:bg-gray-50 dark:hover:bg-gray-700'
+                }`}
+                onClick={() => setTo(u)}
+              >
+                <div className="relative">
+                  <Avatar className="w-12 h-12">
+                    {u === "Admin" ? (
+                      <AvatarImage src="/kamogelo-photo.jpg" alt="Admin" />
+                    ) : (
+                      <AvatarFallback className="bg-gradient-to-br from-green-500 to-blue-500 text-white font-semibold">
+                        {u.slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                  <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-white dark:border-gray-800 rounded-full"></div>
+                </div>
+                <div className="ml-3 flex-1">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">{u}</p>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">9:34 AM</span>
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Photo</p>
+                </div>
+              </div>
+            ))}
+
+            {/* Conversations Section */}
+            <div className="mt-4 mb-3">
+              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Conversation</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Desktop Chat Header (only visible on desktop) */}
+        <div className="hidden lg:flex bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+          <div className="flex items-center space-x-3">
+            {to === 'all' ? (
+              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-600 rounded-full flex items-center justify-center">
+                <Hash size={20} className="text-white" />
+              </div>
+            ) : (
+              <Avatar className="w-10 h-10">
+                {to === "Admin" ? (
+                  <AvatarImage src="/kamogelo-photo.jpg" alt="Admin" />
+                ) : (
+                  <AvatarFallback className="bg-gradient-to-br from-green-500 to-blue-500 text-white font-semibold">
+                    {to.slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                )}
+              </Avatar>
+            )}
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                {to === 'all' ? 'General' : to}
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {to === 'all' ? `${users.length + 1} members` : 'Active now'}
+              </p>
+            </div>
+          </div>
+        </div>
       {showAdminLogin && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-xl p-6 w-full max-w-xs flex flex-col gap-4 border border-border">
@@ -438,35 +703,9 @@ function getDeviceId() {
           </div>
         </div>
       )}
-      
-      <div className="flex flex-1 overflow-hidden flex-col min-h-0">
-        {/* Chat list panel - collapsed on mobile */}
-        <div className="w-full border-b border-border p-2 sm:p-4 overflow-y-auto bg-background shrink-0">
-          <h2 className="text-sm sm:text-lg font-semibold mb-2 sm:mb-4">Active Users</h2>
-          <ul className="space-y-1 sm:space-y-2 flex flex-row flex-wrap gap-1 sm:gap-2">
-            <li className="flex-none">
-              <button
-                className={`text-xs sm:text-sm px-2 py-1 rounded whitespace-nowrap ${to === 'all' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
-                onClick={() => setTo('all')}
-              >
-                Everyone
-              </button>
-            </li>
-            {users.filter(u => u !== user).map(u => (
-              <li key={u} className="flex-none">
-                <button
-                  className={`text-xs sm:text-sm px-2 py-1 rounded whitespace-nowrap ${to === u ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
-                  onClick={() => setTo(u)}
-                >
-                  {u}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-        {/* Messages panel */}
-         <div className="flex-1 flex flex-col min-w-0 min-h-0">
-           <div className="flex-1 overflow-y-auto p-2 sm:p-4 space-y-2 sm:space-y-4 bg-background min-h-0 max-h-full pb-safe" style={{ overscrollBehavior: 'contain' }}>
+        {/* Messages Area - Hidden on mobile, visible on desktop */}
+        <div className="hidden lg:flex lg:flex-col lg:flex-1 lg:min-h-0 bg-white dark:bg-gray-800">
+          <div className="flex-1 overflow-y-auto p-6 space-y-6 chat-messages" style={{ overscrollBehavior: 'contain' }}>
             {messages
               .filter(msg =>
                 to === 'all'
@@ -474,97 +713,107 @@ function getDeviceId() {
                   : (msg.from === user && msg.to === to) || (msg.from === to && msg.to === user)
               )
               .map(msg => (
-                <div
-                  key={msg.id}
-                  className={`flex flex-col w-full ${msg.from === user || msg.from === "Admin" ? 'items-end' : 'items-start'}`}
-                >
-                  <div
-                    className={`relative w-full max-w-[90vw] md:max-w-md p-2 rounded-lg break-words overflow-x-auto
-                      ${msg.from === user || msg.from === "Admin"
-                        ? 'bg-primary text-primary-foreground rounded-br-none'
-                        : 'bg-white text-gray-900 dark:bg-zinc-800 dark:text-gray-100 border border-gray-200 dark:border-zinc-700 rounded-bl-none'}`}
-                    style={{ wordBreak: 'break-word', overflowWrap: 'anywhere', fontFamily: 'Inter, sans-serif', fontWeight: msg.from === user || msg.from === "Admin" ? 500 : 400 }}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className={`block text-xs font-bold opacity-80 flex items-center gap-2 ${msg.from === user || msg.from === "Admin" ? 'text-primary-foreground' : 'text-primary'}`}>{msg.from === "Admin" ? <Image src="/kamogelo-photo.jpg" alt="Admin" width={22} height={22} className="rounded-full border border-primary" /> : null}{msg.from === user ? 'You' : msg.from}</span>
-                      <span className="block text-[10px] text-muted-foreground ml-2">{msg.time ? new Date(msg.time).toLocaleTimeString() : ''}</span>
+                <div key={msg.id} className="flex items-start space-x-4 message-enter">
+                  {/* Avatar */}
+                  <Avatar className="w-10 h-10 flex-shrink-0">
+                    {msg.from === "Admin" ? (
+                      <AvatarImage src="/kamogelo-photo.jpg" alt="Admin" />
+                    ) : (
+                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-semibold">
+                        {(msg.from === user ? 'You' : msg.from).slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                  
+                  {/* Message Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                        {msg.from === user ? 'You' : msg.from}
+                      </span>
+                      {msg.from === "Admin" && (
+                        <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                          Admin
+                        </Badge>
+                      )}
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {msg.time ? new Date(msg.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                      </span>
                     </div>
-                    <span className="block text-base font-medium" style={{ fontWeight: 500 }}>{msg.text}</span>
+                    
+                    <div className="bg-gray-50 dark:bg-gray-700 rounded-2xl px-4 py-3 border border-gray-100 dark:border-gray-600 max-w-2xl">
+                      <p className="text-sm text-gray-900 dark:text-gray-100 leading-relaxed break-words">
+                        {msg.text}
+                      </p>
+                    </div>
                   </div>
                 </div>
               ))}
             <div ref={messagesEndRef} />
           </div>
-           <form
-             className="p-2 sm:p-4 border-t border-border bg-background flex gap-2 sticky bottom-0 z-10 pb-safe shrink-0"
-             style={{ background: 'inherit' }}
-             onSubmit={e => { e.preventDefault(); sendMessage(); }}
-           >
-             {isAdmin && (
-               <Image src="/kamogelo-photo.jpg" alt="Admin" width={24} height={24} className="rounded-full border border-primary object-cover shrink-0" style={{ width: 24, height: 24 }} />
-             )}
-             <Input
-               type="text"
-               value={input}
-               onChange={e => setInput(e.target.value)}
-               onKeyDown={e => e.key === 'Enter' && sendMessage()}
-               placeholder={isAdmin ? "Send a message to users..." : "Type a message..."}
-               className="flex-1 min-w-0 font-medium text-base"
-               autoComplete="off"
-               style={{ minHeight: 44, fontSize: 16, fontWeight: 500 }}
-             />
-             <Button type="submit" className="shrink-0" style={{ minHeight: 44, fontSize: 16, fontWeight: 600 }}>
-               Send
-             </Button>
-           </form>
-        </div>
-        {/* Details panel - hidden on mobile */}
-        <div className="hidden md:block w-64 border-l border-border p-4 overflow-y-auto bg-background">
-          <h2 className="text-lg font-semibold mb-4">Details</h2>
-          <div className="mb-4">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs text-muted-foreground">Current time:</span>
-              <span className="text-xs font-mono">{new Date().toLocaleTimeString()}</span>
-            </div>
-            <div className="flex flex-col gap-2">
-              <span className="text-xs text-muted-foreground">Chat Topic:</span>
-              <span className="text-sm font-medium break-words min-h-[24px]">{topic || 'No topic set.'}</span>
-              <button
-                className="mt-1 px-2 py-1 text-xs rounded bg-primary text-primary-foreground hover:bg-primary/90 w-fit"
-                onClick={() => setShowTopicInput(true)}
-              >
-                {topic ? 'Edit Topic' : 'Add Topic'}
-              </button>
-              {showTopicInput && (
-                <form
-                  className="flex gap-2 mt-2"
-                  onSubmit={e => { e.preventDefault(); setShowTopicInput(false); }}
-                >
-                  <input
-                    type="text"
-                    value={topicInput}
-                    onChange={e => setTopicInput(e.target.value)}
-                    className="flex-1 px-2 py-1 text-xs border rounded focus:outline-none focus:ring"
-                    placeholder="Enter chat topic..."
-                    autoFocus
-                  />
-                  <button
-                    type="submit"
-                    className="px-2 py-1 text-xs rounded bg-green-500 text-white hover:bg-green-600"
-                    onClick={() => { setTopic(topicInput); setShowTopicInput(false); }}
-                  >
-                    Save
-                  </button>
-                  <button
-                    type="button"
-                    className="px-2 py-1 text-xs rounded bg-gray-300 text-gray-700 hover:bg-gray-400"
-                    onClick={() => setShowTopicInput(false)}
-                  >
-                    Cancel
-                  </button>
-                </form>
+
+          {/* Desktop Message Input */}
+          <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6">
+            <form onSubmit={e => { e.preventDefault(); sendMessage(); }} className="flex items-end space-x-4">
+              {isAdmin && (
+                <Avatar className="w-10 h-10 flex-shrink-0">
+                  <AvatarImage src="/kamogelo-photo.jpg" alt="Admin" />
+                </Avatar>
               )}
-            </div>
+              
+              <div className="flex-1 relative">
+                <div className="bg-gray-50 dark:bg-gray-700 rounded-2xl border border-gray-200 dark:border-gray-600 p-4">
+                  <Input
+                    type="text"
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    placeholder={`Message ${to === 'all' ? 'General' : to}...`}
+                    className="border-0 bg-transparent p-0 text-base placeholder:text-gray-500 dark:placeholder:text-gray-400 focus-visible:ring-0 focus-visible:ring-offset-0"
+                    style={{ fontSize: 16 }}
+                  />
+                  <div className="flex items-center justify-between mt-3">
+                    <div className="flex items-center space-x-2">
+                      <Button type="button" size="sm" variant="ghost" className="h-8 w-8 p-0 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600">
+                        <Paperclip size={16} className="text-gray-500 dark:text-gray-400" />
+                      </Button>
+                      <Button type="button" size="sm" variant="ghost" className="h-8 w-8 p-0 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600">
+                        <Smile size={16} className="text-gray-500 dark:text-gray-400" />
+                      </Button>
+                    </div>
+                    <Button 
+                      type="submit" 
+                      disabled={!input.trim()} 
+                      size="sm" 
+                      className="h-9 px-4 rounded-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium"
+                    >
+                      Send
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        {/* Mobile Bottom Navigation */}
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-4 py-2 safe-area-pb">
+          <div className="flex items-center justify-around">
+            <Button variant="ghost" size="sm" className="flex flex-col items-center space-y-1 h-auto py-2">
+              <MessageCircle size={20} className="text-blue-600" />
+              <span className="text-xs text-blue-600 font-medium">Chats</span>
+            </Button>
+            <Button variant="ghost" size="sm" className="flex flex-col items-center space-y-1 h-auto py-2">
+              <Users size={20} className="text-gray-400" />
+              <span className="text-xs text-gray-400">People</span>
+            </Button>
+            <Button variant="ghost" size="sm" className="flex flex-col items-center space-y-1 h-auto py-2">
+              <Phone size={20} className="text-gray-400" />
+              <span className="text-xs text-gray-400">Calls</span>
+            </Button>
+            <Button variant="ghost" size="sm" className="flex flex-col items-center space-y-1 h-auto py-2">
+              <Settings size={20} className="text-gray-400" />
+              <span className="text-xs text-gray-400">Settings</span>
+            </Button>
           </div>
         </div>
       </div>
