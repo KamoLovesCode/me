@@ -267,7 +267,7 @@ const SidebarTrigger = React.forwardRef<
 
   return (
     <Button
-      ref={ref}
+                  className="w-[--sidebar-width] bg-background text-foreground border-none shadow-none p-0"
       data-sidebar="trigger"
       variant="ghost"
       size="icon"
