@@ -695,7 +695,11 @@ if __name__ == "__main__":
           </div>
         ) : (
           <>
-            <Tabs style={{ marginBottom: '4rem',paddingBottom : '1rem' }} defaultValue="all" className="mb-8" onValueChange={setActiveTab}>
+            <Tabs 
+              defaultValue="all" 
+              className="mb-12 p-4 border border-border rounded-lg bg-card/50" 
+              onValueChange={setActiveTab}
+            >
               <div className="flex justify-center">
                 <TabsList className="grid w-full max-w-md grid-cols-3 sm:grid-cols-5">
                   <TabsTrigger value="all" className="text-xs sm:text-sm">
