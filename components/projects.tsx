@@ -637,7 +637,7 @@ class DataAnalyzer:
         
         plt.figure(figsize=(15, 6))
         plt.plot(df_sorted[date_column], df_sorted[value_column])
-        plt.title(f'{value_column} over Time')
+        plt
         plt.xlabel('Date')
         plt.ylabel(value_column)
         plt.xticks(rotation=45)
@@ -673,7 +673,7 @@ if __name__ == "__main__":
     activeTab === "all" ? repos : repos.filter((repo) => repo.topics.includes(activeTab.toLowerCase()))
 
   return (
-    <section id="projects" className="py-16 sm:py-20 px-4 md:px-6 lg:px-8 scroll-mt-16">
+    <section style={{ marginBottom: '4rem' }} id="projects" className="py-16 sm:py-20 px-4 md:px-6 lg:px-8 scroll-mt-16 mb-16">
       <div className="container mx-auto max-w-6xl">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -695,7 +695,7 @@ if __name__ == "__main__":
           </div>
         ) : (
           <>
-            <Tabs defaultValue="all" className="mb-8" onValueChange={setActiveTab}>
+            <Tabs style={{ marginBottom: '4rem',paddingBottom : '1rem' }} defaultValue="all" className="mb-8" onValueChange={setActiveTab}>
               <div className="flex justify-center">
                 <TabsList className="grid w-full max-w-md grid-cols-3 sm:grid-cols-5">
                   <TabsTrigger value="all" className="text-xs sm:text-sm">

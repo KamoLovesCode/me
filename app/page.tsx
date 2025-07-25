@@ -19,7 +19,7 @@ export default function Home() {
     <main className="min-h-screen section-snap">
       <ScrollProgress />
       <SectionNavigator />
-      <div className="fixed top-4 right-4 z-50 flex gap-2">
+      <div className="fixed right-2 top-16 sm:top-4 sm:right-4 z-50 flex gap-2">
         <ThemeToggle />
         {/* <GeminiMicButton /> */}
       </div>
